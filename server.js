@@ -14,12 +14,11 @@ const pool = new Pool({
   database: process.env.DB_NAME || 'automatizaciones',
 });
 
-// Serve frontend
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'index.html'));
 });
 
-// Endpoint: Asesores
+// 1. Obtener lista de asesores únicos
 app.get('/api/asesores', async (req, res) => {
   try {
     const { rows } = await pool.query(
@@ -32,28 +31,82 @@ app.get('/api/asesores', async (req, res) => {
   }
 });
 
-// Endpoint: Operaciones/Remesas
+// 2. Obtener Hashes dinámicos filtrados por Asesor y/o Rango de Fechas
+app.get('/api/hashes', async (req, res) => {
+  try {
+    const { asesor, fechaInicio, fechaFin } = req.query;
+    let query = `
+      SELECT DISTINCT hash_corto 
+      FROM registros 
+      WHERE hash_corto IS NOT NULL AND hash_corto != ''`;
+    let params = [];
+
+    if (asesor) {
+      params.push(asesor);
+      query += ` AND nombre_asesor = $${params.length}`;
+    }
+
+    if (fechaInicio) {
+      params.push(fechaInicio);
+      query += ` AND created_at::date >= $${params.length}`;
+    }
+
+    if (fechaFin) {
+      params.push(fechaFin);
+      query += ` AND created_at::date <= $${params.length}`;
+    }
+
+    query += ' ORDER BY hash_corto';
+
+    const { rows } = await pool.query(query, params);
+    res.json(rows);
+  } catch (err) {
+    console.error('❌ Error en /api/hashes:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// 3. Obtener operaciones filtradas (Jerarquía: Asesor -> Rango Fecha -> Hash)
 app.get('/api/remesas', async (req, res) => {
   try {
-    const { asesor } = req.query;
+    const { asesor, fechaInicio, fechaFin, hash } = req.query;
     let query = `
       SELECT 
         id, 
         nombre_asesor, 
         monto, 
         estado_proceso AS estado, 
+        hash_corto,
         banco, 
         titular, 
         moneda, 
+        created_at,
         fecha_hora 
-      FROM registros`;
+      FROM registros 
+      WHERE 1=1`;
     let params = [];
 
     if (asesor) {
-      query += ' WHERE nombre_asesor = $1';
       params.push(asesor);
+      query += ` AND nombre_asesor = $${params.length}`;
     }
-    query += ' ORDER BY id DESC LIMIT 100';
+
+    if (fechaInicio) {
+      params.push(fechaInicio);
+      query += ` AND created_at::date >= $${params.length}`;
+    }
+
+    if (fechaFin) {
+      params.push(fechaFin);
+      query += ` AND created_at::date <= $${params.length}`;
+    }
+
+    if (hash) {
+      params.push(hash);
+      query += ` AND hash_corto = $${params.length}`;
+    }
+
+    query += ' ORDER BY id DESC LIMIT 200';
 
     const { rows } = await pool.query(query, params);
     res.json(rows);
@@ -63,7 +116,7 @@ app.get('/api/remesas', async (req, res) => {
   }
 });
 
-// Endpoint: Editar registro
+// 4. Edición de registro
 app.put('/api/remesas/:id', async (req, res) => {
   try {
     const { id } = req.params;
