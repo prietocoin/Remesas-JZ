@@ -4,9 +4,8 @@ const path = require('path');
 
 const app = express();
 app.use(express.json());
-app.use(express.static('public'));
+app.use(express.static(__dirname));
 
-// Conexión directa a la red interna de Docker en Easypanel
 const pool = new Pool({
   host: process.env.DB_HOST || 'automatizaciones_db-remesas',
   port: process.env.DB_PORT || 5432,
@@ -15,7 +14,12 @@ const pool = new Pool({
   database: process.env.DB_NAME || 'automatizaciones',
 });
 
-// Endpoint: Obtener asesores para el filtro
+// Entrega la interfaz HTML en la raíz
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, 'index.html'));
+});
+
+// API Endpoints
 app.get('/api/asesores', async (req, res) => {
   try {
     const { rows } = await pool.query('SELECT DISTINCT nombre_asesor FROM remesas WHERE nombre_asesor IS NOT NULL ORDER BY nombre_asesor');
@@ -25,7 +29,6 @@ app.get('/api/asesores', async (req, res) => {
   }
 });
 
-// Endpoint: Obtener remesas + métricas del dashboard
 app.get('/api/remesas', async (req, res) => {
   try {
     const { asesor } = req.query;
@@ -45,7 +48,6 @@ app.get('/api/remesas', async (req, res) => {
   }
 });
 
-// Endpoint: Editar una remesa (Correcciones)
 app.put('/api/remesas/:id', async (req, res) => {
   try {
     const { id } = req.params;
@@ -56,11 +58,11 @@ app.put('/api/remesas/:id', async (req, res) => {
       [monto, estado, observacion, id]
     );
 
-    res.json({ success: true, message: 'Remesa actualizada correctamente' });
+    res.json({ success: true });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 80;
 app.listen(PORT, () => console.log(`Servidor activo en puerto ${PORT}`));
