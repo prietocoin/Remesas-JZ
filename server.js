@@ -14,15 +14,17 @@ const pool = new Pool({
   database: process.env.DB_NAME || 'automatizaciones',
 });
 
-// Ruta principal
+// Serve frontend
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'index.html'));
 });
 
-// Endpoints API
+// Endpoint: Asesores
 app.get('/api/asesores', async (req, res) => {
   try {
-    const { rows } = await pool.query('SELECT DISTINCT nombre_asesor FROM remesas WHERE nombre_asesor IS NOT NULL ORDER BY nombre_asesor');
+    const { rows } = await pool.query(
+      "SELECT DISTINCT nombre_asesor FROM registros WHERE nombre_asesor IS NOT NULL AND nombre_asesor != '' ORDER BY nombre_asesor"
+    );
     res.json(rows);
   } catch (err) {
     console.error('❌ Error en /api/asesores:', err.message);
@@ -30,10 +32,21 @@ app.get('/api/asesores', async (req, res) => {
   }
 });
 
+// Endpoint: Operaciones/Remesas
 app.get('/api/remesas', async (req, res) => {
   try {
     const { asesor } = req.query;
-    let query = 'SELECT * FROM remesas';
+    let query = `
+      SELECT 
+        id, 
+        nombre_asesor, 
+        monto, 
+        estado_proceso AS estado, 
+        banco, 
+        titular, 
+        moneda, 
+        fecha_hora 
+      FROM registros`;
     let params = [];
 
     if (asesor) {
@@ -50,14 +63,15 @@ app.get('/api/remesas', async (req, res) => {
   }
 });
 
+// Endpoint: Editar registro
 app.put('/api/remesas/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const { monto, estado, observacion } = req.body;
+    const { monto, estado } = req.body;
 
     await pool.query(
-      'UPDATE remesas SET monto = $1, estado = $2, observacion = $3 WHERE id = $4',
-      [monto, estado, observacion, id]
+      'UPDATE registros SET monto = $1, estado_proceso = $2 WHERE id = $3',
+      [monto, estado, id]
     );
 
     res.json({ success: true });
