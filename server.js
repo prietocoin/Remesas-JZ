@@ -18,7 +18,7 @@ app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'index.html'));
 });
 
-// 1. Obtener lista de asesores únicos
+// Asesores
 app.get('/api/asesores', async (req, res) => {
   try {
     const { rows } = await pool.query(
@@ -31,33 +31,27 @@ app.get('/api/asesores', async (req, res) => {
   }
 });
 
-// 2. Obtener Hashes dinámicos filtrados por Asesor y/o Rango de Fechas
+// Hashes dinámicos
 app.get('/api/hashes', async (req, res) => {
   try {
     const { asesor, fechaInicio, fechaFin } = req.query;
-    let query = `
-      SELECT DISTINCT hash_corto 
-      FROM registros 
-      WHERE hash_corto IS NOT NULL AND hash_corto != ''`;
+    let query = `SELECT DISTINCT hash_corto FROM registros WHERE hash_corto IS NOT NULL AND hash_corto != ''`;
     let params = [];
 
     if (asesor) {
       params.push(asesor);
       query += ` AND nombre_asesor = $${params.length}`;
     }
-
     if (fechaInicio) {
       params.push(fechaInicio);
       query += ` AND created_at::date >= $${params.length}`;
     }
-
     if (fechaFin) {
       params.push(fechaFin);
       query += ` AND created_at::date <= $${params.length}`;
     }
 
     query += ' ORDER BY hash_corto';
-
     const { rows } = await pool.query(query, params);
     res.json(rows);
   } catch (err) {
@@ -66,7 +60,7 @@ app.get('/api/hashes', async (req, res) => {
   }
 });
 
-// 3. Obtener operaciones filtradas (Jerarquía: Asesor -> Rango Fecha -> Hash)
+// Obtener todas las propiedades necesarias de los registros
 app.get('/api/remesas', async (req, res) => {
   try {
     const { asesor, fechaInicio, fechaFin, hash } = req.query;
@@ -77,11 +71,14 @@ app.get('/api/remesas', async (req, res) => {
         monto, 
         estado_proceso AS estado, 
         hash_corto,
-        banco, 
-        titular, 
-        moneda, 
-        created_at,
-        fecha_hora 
+        titular,
+        moneda,
+        tasa,
+        banco,
+        fecha_hora,
+        timestamp,
+        hiperlink,
+        created_at
       FROM registros 
       WHERE 1=1`;
     let params = [];
@@ -90,24 +87,20 @@ app.get('/api/remesas', async (req, res) => {
       params.push(asesor);
       query += ` AND nombre_asesor = $${params.length}`;
     }
-
     if (fechaInicio) {
       params.push(fechaInicio);
       query += ` AND created_at::date >= $${params.length}`;
     }
-
     if (fechaFin) {
       params.push(fechaFin);
       query += ` AND created_at::date <= $${params.length}`;
     }
-
     if (hash) {
       params.push(hash);
       query += ` AND hash_corto = $${params.length}`;
     }
 
     query += ' ORDER BY id DESC LIMIT 200';
-
     const { rows } = await pool.query(query, params);
     res.json(rows);
   } catch (err) {
@@ -116,15 +109,17 @@ app.get('/api/remesas', async (req, res) => {
   }
 });
 
-// 4. Edición de registro
+// Guardar cambios actualizados
 app.put('/api/remesas/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const { monto, estado } = req.body;
+    const { monto, estado, titular, moneda, tasa, banco, hiperlink } = req.body;
 
     await pool.query(
-      'UPDATE registros SET monto = $1, estado_proceso = $2 WHERE id = $3',
-      [monto, estado, id]
+      `UPDATE registros 
+       SET monto = $1, estado_proceso = $2, titular = $3, moneda = $4, tasa = $5, banco = $6, hiperlink = $7 
+       WHERE id = $8`,
+      [monto, estado, titular, moneda, tasa, banco, hiperlink, id]
     );
 
     res.json({ success: true });
