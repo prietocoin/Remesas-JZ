@@ -1,168 +1,73 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Gestión de Remesas</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
-  <style>
-    [x-cloak] { display: none !important; }
-  </style>
-</head>
-<body class="bg-gray-100 font-sans text-gray-900" x-data="dashboardApp()" x-init="init()">
+const express = require('express');
+const { Pool } = require('pg');
+const path = require('path');
 
-  <!-- Encabezado y Filtro -->
-  <header class="bg-blue-700 text-white p-4 shadow-md sticky top-0 z-10">
-    <div class="max-w-6xl mx-auto flex flex-col md:flex-row md:items-center justify-between gap-3">
-      <h1 class="text-xl font-bold">Visor de Remesas</h1>
-      <select x-model="asesorSeleccionado" @change="cargarRemesas()" class="bg-blue-800 text-white p-2 rounded border border-blue-500 focus:outline-none w-full md:w-64">
-        <option value="">Todos los Asesores</option>
-        <template x-for="a in asesores" :key="a.nombre_asesor">
-          <option :value="a.nombre_asesor" x-text="a.nombre_asesor"></option>
-        </template>
-      </select>
-    </div>
-  </header>
+const app = express();
+app.use(express.json());
 
-  <main class="max-w-6xl mx-auto p-4 space-y-6">
-    <!-- Tarjetas de Métricas -->
-    <div class="grid grid-cols-2 md:grid-cols-3 gap-4">
-      <div class="bg-white p-4 rounded-lg shadow border-l-4 border-blue-600">
-        <p class="text-xs text-gray-500 uppercase font-semibold">Total Operaciones</p>
-        <p class="text-2xl font-bold" x-text="remesas.length"></p>
-      </div>
-      <div class="bg-white p-4 rounded-lg shadow border-l-4 border-green-600">
-        <p class="text-xs text-gray-500 uppercase font-semibold">Monto Acumulado</p>
-        <p class="text-2xl font-bold" x-text="'$' + calcularTotal()"></p>
-      </div>
-    </div>
+// Servir archivos estáticos desde la raíz del proyecto
+app.use(express.static(__dirname));
 
-    <!-- Lista de Registros -->
-    <div class="bg-white rounded-lg shadow overflow-hidden">
-      <!-- Vista Celular (Cards) -->
-      <div class="block md:hidden divide-y">
-        <template x-for="r in remesas" :key="r.id">
-          <div class="p-4 space-y-2">
-            <div class="flex justify-between items-center">
-              <span class="font-bold text-blue-600" x-text="'#' + r.id"></span>
-              <span class="px-2 py-1 text-xs rounded font-semibold" :class="r.estado === 'Completado' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'" x-text="r.estado"></span>
-            </div>
-            <p class="text-sm"><strong>Asesor:</strong> <span x-text="r.nombre_asesor"></span></p>
-            <p class="text-sm"><strong>Monto:</strong> $<span x-text="r.monto"></span></p>
-            <p class="text-sm text-gray-600" x-show="r.observacion"><strong>Obs:</strong> <span x-text="r.observacion"></span></p>
-            <button @click="abrirEditar(r)" class="w-full mt-2 bg-gray-100 hover:bg-gray-200 text-gray-800 py-1.5 rounded text-sm font-semibold">Editar / Corregir</button>
-          </div>
-        </template>
-      </div>
+// Conexión a la base de datos en Easypanel
+const pool = new Pool({
+  host: process.env.DB_HOST || 'automatizaciones_db-remesas',
+  port: process.env.DB_PORT || 5432,
+  user: process.env.DB_USER || 'postgres',
+  password: process.env.DB_PASSWORD,
+  database: process.env.DB_NAME || 'automatizaciones',
+});
 
-      <!-- Vista Escritorio (Tabla) -->
-      <table class="hidden md:table w-full text-left border-collapse">
-        <thead class="bg-gray-50 border-b text-xs text-gray-500 uppercase">
-          <tr>
-            <th class="p-3">ID</th>
-            <th class="p-3">Asesor</th>
-            <th class="p-3">Monto</th>
-            <th class="p-3">Estado</th>
-            <th class="p-3">Observación</th>
-            <th class="p-3 text-right">Acción</th>
-          </tr>
-        </thead>
-        <tbody class="divide-y text-sm">
-          <template x-for="r in remesas" :key="r.id">
-            <tr class="hover:bg-gray-50">
-              <td class="p-3 font-semibold text-blue-600" x-text="'#' + r.id"></td>
-              <td class="p-3" x-text="r.nombre_asesor"></td>
-              <td class="p-3">$<span x-text="r.monto"></span></td>
-              <td class="p-3"><span class="px-2 py-1 text-xs rounded font-semibold" :class="r.estado === 'Completado' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'" x-text="r.estado"></span></td>
-              <td class="p-3 text-gray-500" x-text="r.observacion || '-'"></td>
-              <td class="p-3 text-right">
-                <button @click="abrirEditar(r)" class="text-blue-600 hover:underline font-semibold">Editar</button>
-              </td>
-            </tr>
-          </template>
-        </tbody>
-      </table>
-    </div>
-  </main>
+// Ruta principal para cargar el panel
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, 'index.html'));
+});
 
-  <!-- Modal de Edición -->
-  <div x-show="modalAbierto" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" x-cloak>
-    <div class="bg-white rounded-lg p-6 max-w-md w-full space-y-4">
-      <h3 class="text-lg font-bold">Editar Remesa #<span x-text="formEdit.id"></span></h3>
-      <div>
-        <label class="block text-sm font-medium mb-1">Monto</label>
-        <input type="number" x-model="formEdit.monto" class="w-full border p-2 rounded">
-      </div>
-      <div>
-        <label class="block text-sm font-medium mb-1">Estado</label>
-        <select x-model="formEdit.estado" class="w-full border p-2 rounded">
-          <option value="Pendiente">Pendiente</option>
-          <option value="Completado">Completado</option>
-          <option value="Cancelado">Cancelado</option>
-        </select>
-      </div>
-      <div>
-        <label class="block text-sm font-medium mb-1">Observación</label>
-        <textarea x-model="formEdit.observacion" class="w-full border p-2 rounded rows-2"></textarea>
-      </div>
-      <div class="flex justify-end gap-2 pt-2">
-        <button @click="modalAbierto = false" class="px-4 py-2 border rounded">Cancelar</button>
-        <button @click="guardarCambios()" class="px-4 py-2 bg-blue-600 text-white rounded font-semibold">Guardar</button>
-      </div>
-    </div>
-  </div>
+// Endpoint: Obtener lista de asesores
+app.get('/api/asesores', async (req, res) => {
+  try {
+    const { rows } = await pool.query('SELECT DISTINCT nombre_asesor FROM remesas WHERE nombre_asesor IS NOT NULL ORDER BY nombre_asesor');
+    res.json(rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
 
-  <script>
-    function dashboardApp() {
-      return {
-        asesores: [],
-        remesas: [],
-        asesorSeleccionado: '',
-        modalAbierto: false,
-        formEdit: { id: null, monto: 0, estado: '', observacion: '' },
+// Endpoint: Obtener remesas
+app.get('/api/remesas', async (req, res) => {
+  try {
+    const { asesor } = req.query;
+    let query = 'SELECT * FROM remesas';
+    let params = [];
 
-        async init() {
-          try {
-            const resA = await fetch('/api/asesores');
-            if (resA.ok) this.asesores = await resA.json();
-            await this.cargarRemesas();
-          } catch (e) {
-            console.error('Error al inicializar:', e);
-          }
-        },
-        async cargarRemesas() {
-          try {
-            const res = await fetch(`/api/remesas?asesor=${encodeURIComponent(this.asesorSeleccionado)}`);
-            if (res.ok) this.remesas = await res.json();
-          } catch (e) {
-            console.error('Error al cargar remesas:', e);
-          }
-        },
-        calcularTotal() {
-          return this.remesas.reduce((acc, r) => acc + Number(r.monto || 0), 0).toLocaleString();
-        },
-        abrirEditar(item) {
-          this.formEdit = { ...item };
-          this.modalAbierto = true;
-        },
-        async guardarCambios() {
-          try {
-            const res = await fetch(`/api/remesas/${this.formEdit.id}`, {
-              method: 'PUT',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify(this.formEdit)
-            });
-            if (res.ok) {
-              this.modalAbierto = false;
-              await this.cargarRemesas();
-            }
-          } catch (e) {
-            console.error('Error al guardar cambios:', e);
-          }
-        }
-      }
+    if (asesor) {
+      query += ' WHERE nombre_asesor = $1';
+      params.push(asesor);
     }
-  </script>
-</body>
-</html>
+    query += ' ORDER BY id DESC LIMIT 100';
+
+    const { rows } = await pool.query(query, params);
+    res.json(rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Endpoint: Editar remesa
+app.put('/api/remesas/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { monto, estado, observacion } = req.body;
+
+    await pool.query(
+      'UPDATE remesas SET monto = $1, estado = $2, observacion = $3 WHERE id = $4',
+      [monto, estado, observacion, id]
+    );
+
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+const PORT = process.env.PORT || 80;
+app.listen(PORT, () => console.log(`Servidor activo en puerto ${PORT}`));
