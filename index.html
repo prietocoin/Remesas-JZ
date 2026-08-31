@@ -5,36 +5,49 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>Visor de Remesas | J. Zorrilla</title>
   
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='48' fill='%231d4ed8'/><path d='M25 50 A25 25 0 0 1 75 50 A25 25 0 0 1 25 50' fill='%2338bdf8'/><text x='50' y='60' text-anchor='middle' fill='white' font-weight='900' font-size='26' font-family='sans-serif'>JZ</text></svg>">
+
   <script src="https://cdn.tailwindcss.com"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
   <style>
     [x-cloak] { display: none !important; }
-    html, body { touch-action: manipulation; -webkit-overflow-scrolling: touch; }
-    @keyframes logoPulse {
-      0%, 100% { transform: scale(1); opacity: 0.95; }
-      50% { transform: scale(1.06); opacity: 1; filter: drop-shadow(0 0 15px rgba(59, 130, 246, 0.6)); }
+    html, body {
+      touch-action: manipulation;
+      -webkit-overflow-scrolling: touch;
     }
-    .animate-logo-pulse { animation: logoPulse 1.8s infinite ease-in-out; }
+    @keyframes logoPulse {
+      0%, 100% { transform: scale(1); opacity: 0.92; filter: drop-shadow(0 0 8px rgba(56, 189, 248, 0.4)); }
+      50% { transform: scale(1.08); opacity: 1; filter: drop-shadow(0 0 20px rgba(59, 130, 246, 0.8)); }
+    }
+    .animate-logo-pulse {
+      animation: logoPulse 2s infinite ease-in-out;
+    }
   </style>
 </head>
 <body class="bg-gray-100 font-sans text-gray-900 min-h-screen" x-data="dashboardApp()" x-init="init()">
 
-  <!-- Pantalla de Carga Inicial -->
   <div id="preloader" class="fixed inset-0 bg-slate-900 z-[100] flex flex-col items-center justify-center p-4 transition-all duration-700 opacity-100">
     <div class="flex flex-col items-center max-w-xs text-center space-y-4">
+      
       <div class="relative flex items-center justify-center">
         <div class="absolute inset-0 rounded-full bg-blue-500/20 blur-xl animate-pulse"></div>
-        <div class="w-28 h-28 relative z-10 flex items-center justify-center">
-          <svg class="w-full h-full animate-logo-pulse" viewBox="0 0 100 100" fill="none">
-            <circle cx="50" cy="50" r="45" fill="#1d4ed8"/>
-            <text x="50" y="58" text-anchor="middle" fill="white" font-weight="bold" font-size="28" font-family="sans-serif">JZ</text>
+        <div class="w-32 h-32 relative z-10 animate-logo-pulse">
+          <svg viewBox="0 0 200 200" class="w-full h-full drop-shadow-lg">
+            <circle cx="100" cy="100" r="90" fill="#1e40af" stroke="#3b82f6" stroke-width="4"/>
+            <circle cx="100" cy="100" r="70" fill="#0284c7" opacity="0.8"/>
+            <path d="M 30,100 A 70,70 0 0,0 170,100 Z" fill="#0369a1"/>
+            <path d="M 40,120 Q 100,160 160,120 Q 100,180 40,120 Z" fill="#e2e8f0" opacity="0.9"/>
+            <text x="100" y="112" text-anchor="middle" fill="#ffffff" font-weight="900" font-size="34" font-family="system-ui, sans-serif" letter-spacing="1">J. ZORRILLA</text>
+            <text x="100" y="55" text-anchor="middle" fill="#f97316" font-weight="800" font-size="13" font-family="system-ui, sans-serif">CAMBIOS Y REMESAS</text>
           </svg>
         </div>
       </div>
+      
       <div class="space-y-1">
         <h2 class="text-white text-lg font-bold tracking-wider uppercase">J. ZORRILLA</h2>
         <p class="text-blue-400 text-xs font-semibold tracking-wide">Cambios y Remesas Internacionales</p>
       </div>
+
       <div class="w-48 bg-slate-800 rounded-full h-1.5 overflow-hidden border border-slate-700/50 mt-2">
         <div class="bg-gradient-to-r from-blue-500 to-cyan-400 h-full w-full animate-pulse"></div>
       </div>
@@ -42,22 +55,30 @@
     </div>
   </div>
 
-  <!-- Encabezado con Logo -->
   <header class="bg-blue-700 text-white p-3 sm:p-4 shadow-md sticky top-0 z-20">
     <div class="max-w-6xl mx-auto flex flex-col gap-2.5">
       <div class="flex justify-between items-center">
+        
         <div class="flex items-center gap-2.5">
-          <img src="logo.png" onerror="this.onerror=null; this.src='data:image/svg+xml;utf8,<svg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 100 100\'><circle cx=\'50\' cy=\'50\' r=\'45\' fill=\'%231e40af\'/><text x=\'50\' y=\'60\' text-anchor=\'middle\' fill=\'white\' font-weight=\'bold\' font-size=\'32\' font-family=\'sans-serif\'>JZ</text></svg>'" alt="Logo" class="w-9 h-9 object-contain rounded-full border border-white/20 bg-white/10 p-0.5">
+          <div class="w-9 h-9 sm:w-10 sm:h-10 shrink-0">
+            <svg viewBox="0 0 200 200" class="w-full h-full">
+              <circle cx="100" cy="100" r="90" fill="#1e40af" stroke="#ffffff" stroke-width="6"/>
+              <circle cx="100" cy="100" r="70" fill="#0284c7"/>
+              <path d="M 30,100 A 70,70 0 0,0 170,100 Z" fill="#0369a1"/>
+              <text x="100" y="115" text-anchor="middle" fill="#ffffff" font-weight="900" font-size="38" font-family="system-ui, sans-serif">JZ</text>
+            </svg>
+          </div>
           <div>
             <h1 class="text-base sm:text-xl font-bold tracking-wide leading-tight">Visor de Remesas</h1>
             <p class="text-[10px] sm:text-xs text-blue-200 font-medium">J. Zorrilla Internacional</p>
           </div>
         </div>
+
         <span class="text-xs bg-blue-800 px-2.5 py-1 rounded-full text-blue-200 border border-blue-500 font-medium shrink-0" x-text="remesas.length + ' regs'"></span>
       </div>
       
-      <!-- Controles de Filtro -->
       <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs sm:text-sm">
+        
         <div>
           <select x-model="asesorSeleccionado" @change="onFiltroPadreChange()" class="bg-blue-800 text-white p-2 rounded border border-blue-500 focus:outline-none w-full text-xs sm:text-sm">
             <option value="">Todos los Asesores</option>
@@ -72,6 +93,7 @@
             <span x-text="obtenerTextoRangoFecha()" class="truncate"></span>
             <svg class="w-3.5 h-3.5 ml-1 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
           </button>
+
           <div x-show="fechaMenuAbierto" x-cloak class="absolute left-0 right-0 sm:right-auto mt-1 w-full sm:w-72 bg-white text-gray-800 rounded-lg shadow-2xl p-3 z-50 border border-gray-200 space-y-2.5">
             <div>
               <label class="block text-xs font-semibold text-gray-600 mb-1">Desde</label>
@@ -96,6 +118,7 @@
             </template>
           </select>
         </div>
+
       </div>
     </div>
   </header>
@@ -113,18 +136,21 @@
     </div>
 
     <div class="bg-white rounded-lg shadow overflow-hidden">
-      <!-- Vista Móvil -->
+      
       <div class="block md:hidden divide-y divide-gray-100">
         <template x-for="r in remesasOrdenadas" :key="r.id">
           <div class="p-3.5 space-y-2 hover:bg-gray-50 transition-colors">
             <div class="flex justify-between items-center">
               <span class="font-bold text-xs text-gray-400" x-text="'#' + r.id"></span>
+              
               <button @click="abrirEditar(r)" type="button" class="inline-flex items-center gap-1 bg-blue-50 active:bg-blue-200 text-blue-700 px-2.5 py-1.5 rounded-md border border-blue-200 text-xs font-mono font-bold shadow-sm">
                 <svg class="w-3 h-3 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
                 <span x-text="r.hash_corto || 'Ver detalle'"></span>
               </button>
+
               <span class="px-2 py-0.5 text-[11px] rounded font-semibold" :class="r.estado === 'P' || r.estado === 'Pendiente' ? 'bg-yellow-100 text-yellow-800' : 'bg-green-100 text-green-800'" x-text="r.estado || 'P'"></span>
             </div>
+
             <div class="flex justify-between items-baseline text-sm pt-1">
               <span class="text-gray-600 font-medium" x-text="r.nombre_asesor"></span>
               <span class="font-bold text-base text-gray-900">$<span x-text="Number(r.monto || 0).toFixed(2)"></span></span>
@@ -133,7 +159,6 @@
         </template>
       </div>
 
-      <!-- Vista Escritorio -->
       <div class="hidden md:block overflow-x-auto w-full">
         <table class="w-full text-left border-collapse min-w-[600px]">
           <thead class="bg-gray-50 border-b text-xs text-gray-500 uppercase">
@@ -163,12 +188,13 @@
           </tbody>
         </table>
       </div>
+
     </div>
   </main>
 
-  <!-- Modal -->
   <div x-show="modalAbierto" class="fixed inset-0 bg-black/60 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 overflow-y-auto" x-cloak>
     <div @click.outside="modalAbierto = false" class="bg-white rounded-t-2xl sm:rounded-xl p-4 sm:p-6 max-w-md w-full space-y-3.5 shadow-2xl max-h-[92vh] overflow-y-auto">
+      
       <div class="flex justify-between items-center border-b pb-3 sticky top-0 bg-white z-10">
         <div>
           <h3 class="text-base sm:text-lg font-bold text-gray-800">Remesa #<span x-text="formEdit.id"></span></h3>
@@ -185,6 +211,7 @@
           <label class="block text-xs font-semibold text-gray-600 mb-1">Titular</label>
           <input type="text" x-model="formEdit.titular" class="w-full border p-2 rounded text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none">
         </div>
+
         <div class="grid grid-cols-2 gap-2.5">
           <div>
             <label class="block text-xs font-semibold text-gray-600 mb-1">Monto</label>
@@ -195,6 +222,7 @@
             <input type="text" x-model="formEdit.tasa" class="w-full border p-2 rounded text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none">
           </div>
         </div>
+
         <div class="grid grid-cols-2 gap-2.5">
           <div>
             <label class="block text-xs font-semibold text-gray-600 mb-1">Moneda</label>
@@ -225,6 +253,7 @@
             <input type="text" x-model="formEdit.banco" class="w-full border p-2 rounded text-xs focus:ring-2 focus:ring-blue-500 focus:outline-none">
           </div>
         </div>
+
         <div class="grid grid-cols-2 gap-2.5">
           <div>
             <label class="block text-xs font-semibold text-gray-600 mb-1">Timestamp</label>
@@ -248,6 +277,7 @@
         <button @click="modalAbierto = false" class="w-full sm:w-auto px-4 py-2 border rounded-lg text-xs font-semibold text-gray-600 hover:bg-gray-50">Cancelar</button>
         <button @click="guardarCambios()" class="w-full sm:w-auto px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold shadow">Guardar</button>
       </div>
+
     </div>
   </div>
 
@@ -268,13 +298,14 @@
           } catch (e) {
             console.error(e);
           } finally {
+            // Delay incrementado a 2200 ms para apreciar la pantalla de carga
             setTimeout(() => {
               const preloader = document.getElementById('preloader');
               if (preloader) {
                 preloader.classList.add('opacity-0', 'pointer-events-none');
                 setTimeout(() => preloader.remove(), 700);
               }
-            }, 600);
+            }, 2200);
           }
         },
 
