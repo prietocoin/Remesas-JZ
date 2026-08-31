@@ -18,7 +18,7 @@ app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'index.html'));
 });
 
-// Asesores
+// Endpoint: Asesores
 app.get('/api/asesores', async (req, res) => {
   try {
     const { rows } = await pool.query(
@@ -31,7 +31,7 @@ app.get('/api/asesores', async (req, res) => {
   }
 });
 
-// Hashes dinámicos
+// Endpoint: Hashes dinámicos
 app.get('/api/hashes', async (req, res) => {
   try {
     const { asesor, fechaInicio, fechaFin } = req.query;
@@ -60,7 +60,7 @@ app.get('/api/hashes', async (req, res) => {
   }
 });
 
-// Obtener todas las propiedades necesarias de los registros
+// Endpoint: Registros principales
 app.get('/api/remesas', async (req, res) => {
   try {
     const { asesor, fechaInicio, fechaFin, hash } = req.query;
@@ -70,6 +70,7 @@ app.get('/api/remesas', async (req, res) => {
         nombre_asesor, 
         monto, 
         estado_proceso AS estado, 
+        tipo_operacion,
         hash_corto,
         titular,
         moneda,
@@ -109,17 +110,35 @@ app.get('/api/remesas', async (req, res) => {
   }
 });
 
-// Guardar cambios actualizados
+// Endpoint: Visor Genérico para revisión de otras tablas
+app.get('/api/tabla/:nombre', async (req, res) => {
+  const tablasPermitidas = ['registros', 'cola_recepcion', 'vista_pares', 'tasas_mercado', 't_nombres'];
+  const tabla = req.params.nombre;
+  
+  if (!tablasPermitidas.includes(tabla)) {
+    return res.status(403).json({ error: 'Tabla no autorizada para revisión' });
+  }
+
+  try {
+    const { rows } = await pool.query(`SELECT * FROM ${tabla} ORDER BY 1 DESC LIMIT 100`);
+    res.json(rows);
+  } catch (err) {
+    console.error(`❌ Error en /api/tabla/${tabla}:`, err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Endpoint: Guardar cambios
 app.put('/api/remesas/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const { monto, estado, titular, moneda, tasa, banco, hiperlink } = req.body;
+    const { monto, estado, titular, moneda, tasa, banco, hiperlink, tipo_operacion } = req.body;
 
     await pool.query(
       `UPDATE registros 
-       SET monto = $1, estado_proceso = $2, titular = $3, moneda = $4, tasa = $5, banco = $6, hiperlink = $7 
-       WHERE id = $8`,
-      [monto, estado, titular, moneda, tasa, banco, hiperlink, id]
+       SET monto = $1, estado_proceso = $2, titular = $3, moneda = $4, tasa = $5, banco = $6, hiperlink = $7, tipo_operacion = $8
+       WHERE id = $9`,
+      [monto, estado, titular, moneda, tasa, banco, hiperlink, tipo_operacion, id]
     );
 
     res.json({ success: true });
