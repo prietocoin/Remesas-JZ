@@ -51,10 +51,8 @@
   <!-- Mobile Sidebar Overlay -->
   <div x-show="sidebarAbierto" x-transition.opacity class="fixed inset-0 bg-black/60 z-40 md:hidden" @click="sidebarAbierto = false" x-cloak></div>
 
-  <!-- Sidebar (Menú Lateral) -->
+  <!-- Sidebar -->
   <aside :class="sidebarAbierto ? 'translate-x-0' : '-translate-x-full'" class="fixed md:static inset-y-0 left-0 z-50 w-64 bg-zorrilla-dark text-white flex flex-col transition-transform duration-300 md:translate-x-0 shadow-2xl md:shadow-none">
-    
-    <!-- Branding Sidebar -->
     <div class="p-4 flex items-center gap-3 border-b border-white/10 shrink-0">
       <div class="bg-white/10 p-1.5 rounded-xl">
         <img src="/logo.png" alt="Logo" class="w-8 h-8 object-contain">
@@ -64,12 +62,8 @@
         <p class="text-[9px] text-blue-300 uppercase tracking-widest">Dashboard Panel</p>
       </div>
     </div>
-
-    <!-- Navegación -->
     <nav class="flex-1 overflow-y-auto p-3 space-y-2">
-      
       <p class="px-3 text-[10px] font-bold text-indigo-300 uppercase tracking-wider mb-2 mt-2">Principal</p>
-      
       <button @click="cambiarTabla('registros')" :class="tablaActiva === 'registros' ? 'bg-indigo-600 text-white shadow' : 'text-blue-200 hover:bg-white/10 hover:text-white'" class="w-full flex items-center gap-3 p-2.5 rounded-lg font-semibold text-sm transition-all">
         <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8.25 6.75h12M8.25 12h12m-12 5.25h12M3.75 6.75h.007v.008H3.75V6.75zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zM3.75 12h.007v.008H3.75V12zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm-.375 5.25h.007v.008H3.75v-.008zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" /></svg>
         Visor de Remesas
@@ -97,31 +91,28 @@
         <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 9h3.75M15 12h3.75M15 15h3.75M4.5 19.5h15a2.25 2.25 0 002.25-2.25V6.75A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25v10.5A2.25 2.25 0 004.5 19.5zm6-10.125a1.875 1.875 0 11-3.75 0 1.875 1.875 0 013.75 0zm1.294 6.336a6.721 6.721 0 01-3.17.789 6.721 6.721 0 01-3.168-.789 3.376 3.376 0 016.338 0z" /></svg>
         Directorio (Nombres)
       </button>
-
     </nav>
   </aside>
 
-  <!-- Contenedor Principal -->
+  <!-- Contenedor Principal Derecho -->
   <div class="flex-1 flex flex-col h-full overflow-hidden relative w-full">
     
     <!-- Encabezado -->
     <header class="bg-zorrilla text-white p-3 sm:p-4 shadow-md z-20 shrink-0">
       <div class="max-w-6xl mx-auto flex flex-col gap-3">
         <div class="flex justify-between items-center">
-          
           <div class="flex items-center gap-3">
             <button @click="sidebarAbierto = true" class="md:hidden p-1.5 bg-zorrilla-dark rounded-md hover:bg-indigo-600 focus:outline-none transition-colors">
               <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
             </button>
-
             <div>
               <h1 class="text-base sm:text-xl font-bold tracking-wide leading-tight capitalize" x-text="tablaActiva === 'registros' ? 'Visor de Remesas' : tablaActiva.replace('_', ' ')"></h1>
             </div>
           </div>
-
           <span class="text-xs bg-zorrilla-dark px-2.5 py-1 rounded-full text-blue-200 border border-zorrilla font-medium shrink-0" x-text="tablaActiva === 'registros' ? remesas.length + ' regs' : datosGenericos.length + ' regs'"></span>
         </div>
         
+        <!-- Filtros (Visible solo en Registros) -->
         <div x-show="tablaActiva === 'registros'" class="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs sm:text-sm">
           <div>
             <select x-model="asesorSeleccionado" @change="onFiltroPadreChange()" class="bg-zorrilla-dark text-white p-2 rounded border border-zorrilla focus:outline-none w-full text-xs sm:text-sm">
@@ -132,13 +123,13 @@
             </select>
           </div>
 
-          <div class="relative" @click.outside="fechaMenuAbierto = false">
-            <button @click="fechaMenuAbierto = !fechaMenuAbierto" type="button" class="bg-zorrilla-dark text-white p-2 rounded border border-zorrilla focus:outline-none w-full text-left flex justify-between items-center text-xs sm:text-sm">
+          <div class="relative">
+            <button @click.stop="fechaMenuAbierto = !fechaMenuAbierto" type="button" class="bg-zorrilla-dark text-white p-2 rounded border border-zorrilla focus:outline-none w-full text-left flex justify-between items-center text-xs sm:text-sm">
               <span x-text="obtenerTextoRangoFecha()" class="truncate"></span>
               <svg class="w-3.5 h-3.5 ml-1 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
             </button>
 
-            <div x-show="fechaMenuAbierto" x-cloak class="absolute left-0 right-0 sm:right-auto mt-1 w-full sm:w-72 bg-white text-gray-800 rounded-lg shadow-2xl p-3 z-50 border border-gray-200 space-y-2.5">
+            <div x-show="fechaMenuAbierto" @click.outside="fechaMenuAbierto = false" x-cloak class="absolute left-0 right-0 sm:right-auto mt-1 w-full sm:w-72 bg-white text-gray-800 rounded-lg shadow-2xl p-3 z-50 border border-gray-200 space-y-2.5">
               <div>
                 <label class="block text-xs font-semibold text-gray-600 mb-1">Desde</label>
                 <input type="date" x-model="fechaInicio" @change="onFiltroPadreChange()" class="w-full border p-2 rounded text-xs focus:ring-2 focus:ring-indigo-500 focus:outline-none">
@@ -149,7 +140,7 @@
               </div>
               <div class="flex justify-between items-center pt-2 border-t">
                 <button @click="limpiarFechas()" type="button" class="text-xs text-red-600 hover:underline font-semibold">Limpiar</button>
-                <button @click="fechaMenuAbierto = false" type="button" class="px-3 py-1 bg-zorrilla text-white rounded text-xs font-semibold">Aplicar</button>
+                <button @click="fechaMenuAbierto = false" type="button" class="px-3 py-1 bg-zorrilla text-white rounded text-xs font-semibold">Cerrar</button>
               </div>
             </div>
           </div>
@@ -169,7 +160,7 @@
     <!-- Área de Contenido -->
     <main class="flex-1 overflow-x-hidden overflow-y-auto bg-gray-100 p-3 sm:p-4 pb-12 w-full">
       
-      <!-- VISTA PRINCIPAL: REGISTROS -->
+      <!-- VISTA: REGISTROS -->
       <div x-show="tablaActiva === 'registros'" class="max-w-6xl mx-auto space-y-4">
         
         <div class="grid grid-cols-2 gap-3">
@@ -202,10 +193,7 @@
               <div class="p-3.5 space-y-2 transition-colors border-l-4" :class="obtenerColorFila(r.tipo_operacion)">
                 <div class="flex justify-between items-center gap-1">
                   <span class="font-bold text-xs text-gray-500" x-text="'#' + r.id"></span>
-                  
-                  <!-- Etiqueta Traducida Visualmente -->
                   <span class="px-2 py-0.5 text-[10px] uppercase font-bold rounded bg-white shadow-sm border border-gray-200 text-gray-600" x-text="traducirTipo(r.tipo_operacion)"></span>
-                  
                   <button @click="abrirEditar(r)" type="button" class="inline-flex items-center gap-1 bg-white/90 active:bg-gray-100 text-indigo-900 px-2.5 py-1 rounded-md border border-gray-300 text-xs font-mono font-bold shadow-sm">
                     <span x-text="r.hash_corto || 'Ver detalle'"></span>
                   </button>
@@ -237,12 +225,9 @@
                   <tr class="transition-colors border-l-4" :class="obtenerColorFila(r.tipo_operacion)">
                     <td class="p-3 font-semibold text-gray-500" x-text="'#' + r.id"></td>
                     <td class="p-3 font-medium text-gray-800" x-text="r.nombre_asesor"></td>
-                    
-                    <!-- Etiqueta Traducida Visualmente -->
                     <td class="p-3">
                       <span class="px-2 py-0.5 text-xs font-bold rounded uppercase bg-white border border-gray-200 text-gray-600 shadow-sm" x-text="traducirTipo(r.tipo_operacion)"></span>
                     </td>
-                    
                     <td class="p-3">
                       <button @click="abrirEditar(r)" type="button" class="font-mono text-xs bg-white/90 hover:bg-gray-100 text-indigo-900 px-2.5 py-1 rounded border border-gray-300 font-bold transition-colors inline-flex items-center gap-1.5 shadow-sm">
                         <span x-text="r.hash_corto || 'Sin Hash'"></span>
@@ -259,7 +244,7 @@
         </div>
       </div>
 
-      <!-- VISTA GENÉRICA: OTRAS TABLAS -->
+      <!-- VISTA GENÉRICA -->
       <div x-show="tablaActiva !== 'registros'" x-cloak class="max-w-full mx-auto">
         <div class="bg-white rounded-lg shadow overflow-hidden">
           <div class="p-4 border-b border-gray-100 flex justify-between items-center bg-gray-50">
@@ -299,91 +284,90 @@
     </main>
   </div>
 
-  <!-- Modal -->
+  <!-- Modal con Color de Fondo Adaptable y Selector Rápido -->
   <div x-show="modalAbierto" class="fixed inset-0 bg-black/60 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 overflow-y-auto" x-cloak>
-    <div @click.outside="modalAbierto = false" class="bg-white rounded-t-2xl sm:rounded-xl p-4 sm:p-6 max-w-md w-full space-y-3.5 shadow-2xl max-h-[92vh] overflow-y-auto">
+    <div 
+      @click.outside="modalAbierto = false" 
+      class="rounded-t-2xl sm:rounded-xl p-4 sm:p-6 max-w-md w-full space-y-3.5 shadow-2xl max-h-[92vh] overflow-y-auto transition-colors duration-300"
+      :class="obtenerColorModal(formEdit.tipo_operacion)"
+    >
       
-      <div class="flex justify-between items-center border-b pb-3 sticky top-0 bg-white z-10">
+      <div class="flex justify-between items-center border-b border-gray-200/50 pb-3 sticky top-0 z-10 backdrop-blur-sm bg-white/30 rounded-lg p-2 -mx-2 -mt-2 shadow-sm">
         <div>
           <h3 class="text-base sm:text-lg font-bold text-gray-800">Remesa #<span x-text="formEdit.id"></span></h3>
-          <p class="text-xs text-gray-500 font-mono" x-text="'Hash: ' + (formEdit.hash_corto || 'N/A')"></p>
+          <p class="text-xs text-gray-600 font-mono" x-text="'Hash: ' + (formEdit.hash_corto || 'N/A')"></p>
         </div>
         <div class="flex gap-1.5 items-center">
+          
+          <!-- Botón de Tipo Operación (Depósito / Transferencia) Integrado Arriba -->
+          <button 
+            type="button" 
+            @click="alternarTipoOperacion()"
+            class="px-2 py-0.5 text-xs font-bold rounded uppercase cursor-pointer hover:opacity-80 transition-opacity shadow-sm border border-gray-300"
+            :class="String(formEdit.tipo_operacion || '').toLowerCase().includes('ingreso') || String(formEdit.tipo_operacion || '').toLowerCase().includes('deposito') ? 'bg-emerald-600 text-white' : (String(formEdit.tipo_operacion || '').toLowerCase().includes('egreso') || String(formEdit.tipo_operacion || '').toLowerCase().includes('transfe') ? 'bg-rose-600 text-white' : 'bg-gray-100 text-gray-600')"
+            x-text="traducirTipo(formEdit.tipo_operacion)"
+            title="Clic para cambiar el tipo de operación"
+          ></button>
+
           <span class="px-2 py-0.5 text-xs font-bold rounded bg-indigo-100 text-indigo-800 border border-indigo-200" x-text="formEdit.moneda || 'USD'"></span>
-          <span class="px-2 py-0.5 text-xs font-bold rounded border" :class="formEdit.estado === 'P' || formEdit.estado === 'Pendiente' ? 'bg-yellow-100 text-yellow-800 border-yellow-300' : 'bg-green-100 text-green-800 border-green-300'" x-text="formEdit.estado || 'P'"></span>
+          
+          <input type="text" x-model="formEdit.estado" class="w-8 px-1 py-0.5 text-center text-xs font-bold rounded border uppercase focus:ring-1 focus:ring-indigo-500 focus:outline-none" :class="formEdit.estado === 'P' || formEdit.estado === 'Pendiente' ? 'bg-yellow-100 text-yellow-800 border-yellow-300' : 'bg-green-100 text-green-800 border-green-300'">
         </div>
       </div>
 
-      <div class="space-y-3">
-        <!-- Input Selector: Muestra Depósito / Transferencia pero guarda el valor real en DB si es necesario -->
+      <div class="space-y-3 pt-1">
         <div>
-          <label class="block text-xs font-semibold text-gray-600 mb-1">Tipo de Operación</label>
-          <select x-model="formEdit.tipo_operacion" class="w-full border p-2 rounded text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none font-semibold bg-gray-50">
-            <option value="">- Seleccionar -</option>
-            <!-- Estos values se pueden cambiar a Ingreso/Egreso si la DB requiere la palabra literal -->
-            <option value="Ingreso">Depósito</option>
-            <option value="Egreso">Transferencia</option>
-          </select>
-        </div>
-
-        <div>
-          <label class="block text-xs font-semibold text-gray-600 mb-1">Titular</label>
-          <input type="text" x-model="formEdit.titular" class="w-full border p-2 rounded text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+          <label class="block text-xs font-semibold text-gray-700 mb-1">Titular</label>
+          <input type="text" x-model="formEdit.titular" class="w-full border border-gray-300/80 bg-white/90 p-2 rounded text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none shadow-sm">
         </div>
 
         <div class="grid grid-cols-2 gap-2.5">
           <div>
-            <label class="block text-xs font-semibold text-gray-600 mb-1">Monto</label>
-            <input type="number" step="0.01" x-model="formEdit.monto" class="w-full border p-2 rounded text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+            <label class="block text-xs font-semibold text-gray-700 mb-1">Monto</label>
+            <input type="number" step="0.01" x-model="formEdit.monto" class="w-full border border-gray-300/80 bg-white/90 p-2 rounded text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none shadow-sm">
           </div>
           <div>
-            <label class="block text-xs font-semibold text-gray-600 mb-1">Número de Tasa</label>
-            <input type="text" x-model="formEdit.tasa" class="w-full border p-2 rounded text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+            <label class="block text-xs font-semibold text-gray-700 mb-1">Número de Tasa</label>
+            <input type="text" x-model="formEdit.tasa" class="w-full border border-gray-300/80 bg-white/90 p-2 rounded text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none shadow-sm">
           </div>
         </div>
 
-        <div class="grid grid-cols-2 gap-2.5">
-          <div>
-            <label class="block text-xs font-semibold text-gray-600 mb-1">Moneda</label>
-            <input type="text" x-model="formEdit.moneda" class="w-full border p-2 rounded text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none">
-          </div>
-          <div>
-            <label class="block text-xs font-semibold text-gray-600 mb-1">Estado</label>
-            <input type="text" x-model="formEdit.estado" class="w-full border p-2 rounded text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none">
-          </div>
+        <div>
+          <label class="block text-xs font-semibold text-gray-700 mb-1">Moneda</label>
+          <input type="text" x-model="formEdit.moneda" class="w-full border border-gray-300/80 bg-white/90 p-2 rounded text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none shadow-sm">
         </div>
       </div>
 
       <div class="pt-1">
-        <button @click="verMas = !verMas" type="button" class="text-xs font-semibold text-indigo-700 hover:text-indigo-900 flex items-center gap-1 focus:outline-none py-1">
+        <button @click="verMas = !verMas" type="button" class="text-xs font-semibold text-indigo-800 hover:text-indigo-950 flex items-center gap-1 focus:outline-none py-1">
           <span x-text="verMas ? 'Ver menos detalles' : 'Ver más detalles...'"></span>
           <svg class="w-3.5 h-3.5 transform transition-transform" :class="verMas ? 'rotate-180' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
         </button>
       </div>
 
-      <div x-show="verMas" x-cloak class="space-y-3 pt-2 border-t border-gray-100">
+      <div x-show="verMas" x-cloak class="space-y-3 pt-2 border-t border-gray-200/50">
         <div class="grid grid-cols-2 gap-2.5">
           <div>
-            <label class="block text-xs font-semibold text-gray-600 mb-1">Fecha / Hora</label>
-            <input type="text" x-model="formEdit.fecha_hora" readonly class="w-full border p-2 rounded text-xs bg-gray-50 text-gray-600">
+            <label class="block text-xs font-semibold text-gray-700 mb-1">Fecha / Hora</label>
+            <input type="text" x-model="formEdit.fecha_hora" readonly class="w-full border border-gray-300/80 bg-white/50 p-2 rounded text-xs text-gray-600 shadow-sm">
           </div>
           <div>
-            <label class="block text-xs font-semibold text-gray-600 mb-1">Banco</label>
-            <input type="text" x-model="formEdit.banco" class="w-full border p-2 rounded text-xs focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+            <label class="block text-xs font-semibold text-gray-700 mb-1">Banco</label>
+            <input type="text" x-model="formEdit.banco" class="w-full border border-gray-300/80 bg-white/90 p-2 rounded text-xs focus:ring-2 focus:ring-indigo-500 focus:outline-none shadow-sm">
           </div>
         </div>
 
         <div class="grid grid-cols-2 gap-2.5">
           <div>
-            <label class="block text-xs font-semibold text-gray-600 mb-1">Timestamp</label>
-            <input type="text" x-model="formEdit.timestamp" readonly class="w-full border p-2 rounded text-xs bg-gray-50 text-gray-500">
+            <label class="block text-xs font-semibold text-gray-700 mb-1">Timestamp</label>
+            <input type="text" x-model="formEdit.timestamp" readonly class="w-full border border-gray-300/80 bg-white/50 p-2 rounded text-xs text-gray-500 shadow-sm">
           </div>
           <div>
-            <label class="block text-xs font-semibold text-gray-600 mb-1">Link Adjunto</label>
+            <label class="block text-xs font-semibold text-gray-700 mb-1">Link Adjunto</label>
             <div class="flex gap-1">
-              <input type="text" x-model="formEdit.hiperlink" class="w-full border p-1.5 rounded text-xs focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+              <input type="text" x-model="formEdit.hiperlink" class="w-full border border-gray-300/80 bg-white/90 p-1.5 rounded text-xs focus:ring-2 focus:ring-indigo-500 focus:outline-none shadow-sm">
               <template x-if="formEdit.hiperlink">
-                <a :href="formEdit.hiperlink" target="_blank" class="p-1.5 bg-gray-100 hover:bg-gray-200 rounded border flex items-center justify-center text-indigo-700 shrink-0">
+                <a :href="formEdit.hiperlink" target="_blank" class="p-1.5 bg-white hover:bg-gray-100 rounded border border-gray-300 flex items-center justify-center text-indigo-700 shrink-0 shadow-sm">
                   <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg>
                 </a>
               </template>
@@ -392,9 +376,9 @@
         </div>
       </div>
 
-      <div class="flex justify-end gap-2 pt-3 border-t">
-        <button @click="modalAbierto = false" class="w-full sm:w-auto px-4 py-2 border rounded-lg text-xs font-semibold text-gray-600 hover:bg-gray-50">Cancelar</button>
-        <button @click="guardarCambios()" class="w-full sm:w-auto px-5 py-2 bg-zorrilla hover:bg-zorrilla-dark text-white rounded-lg text-xs font-bold shadow">Guardar</button>
+      <div class="flex justify-end gap-2 pt-3 border-t border-gray-200/50 mt-4">
+        <button @click="modalAbierto = false" class="w-full sm:w-auto px-4 py-2 border border-gray-300 bg-white/80 rounded-lg text-xs font-semibold text-gray-700 hover:bg-white shadow-sm">Cancelar</button>
+        <button @click="guardarCambios()" class="w-full sm:w-auto px-5 py-2 bg-zorrilla hover:bg-zorrilla-dark text-white rounded-lg text-xs font-bold shadow-md">Guardar</button>
       </div>
 
     </div>
@@ -455,26 +439,40 @@
           }
         },
 
-        // Traductor para mostrar "Depósito" en vez de "INGRESO"
         traducirTipo(tipo) {
           if (!tipo) return '-';
           const t = String(tipo).toLowerCase().trim();
           if (t.includes('ingreso') || t.includes('deposito') || t.includes('depósito')) return 'DEPÓSITO';
           if (t.includes('egreso') || t.includes('transfe')) return 'TRANSFERENCIA';
-          return tipo; // Si no es ninguno de los dos, muestra el texto crudo
+          return tipo;
         },
 
-        // Colorea según la palabra original que venga
+        // Color de la fila en la tabla principal
         obtenerColorFila(tipo) {
           if (!tipo) return 'bg-white hover:bg-gray-50 border-l-transparent';
           const t = String(tipo).toLowerCase().trim();
-          if (t.includes('ingreso') || t.includes('deposito') || t.includes('depósito')) {
-            return 'bg-emerald-50/80 border-l-emerald-500 hover:bg-emerald-100/80';
-          }
-          if (t.includes('egreso') || t.includes('transfe')) {
-            return 'bg-rose-50/80 border-l-rose-500 hover:bg-rose-100/80';
-          }
+          if (t.includes('ingreso') || t.includes('deposito') || t.includes('depósito')) return 'bg-emerald-50/80 border-l-emerald-500 hover:bg-emerald-100/80';
+          if (t.includes('egreso') || t.includes('transfe')) return 'bg-rose-50/80 border-l-rose-500 hover:bg-rose-100/80';
           return 'bg-white hover:bg-gray-50 border-l-transparent';
+        },
+
+        // Color global de fondo para el Modal Entero
+        obtenerColorModal(tipo) {
+          if (!tipo) return 'bg-white';
+          const t = String(tipo).toLowerCase().trim();
+          if (t.includes('ingreso') || t.includes('deposito') || t.includes('depósito')) return 'bg-emerald-50/95 border border-emerald-200';
+          if (t.includes('egreso') || t.includes('transfe')) return 'bg-rose-50/95 border border-rose-200';
+          return 'bg-white border border-gray-200';
+        },
+
+        // Alterna entre Egreso (Transferencia) e Ingreso (Depósito) con 1 clic
+        alternarTipoOperacion() {
+          const t = String(this.formEdit.tipo_operacion || '').toLowerCase().trim();
+          if (t.includes('ingreso') || t.includes('deposito') || t.includes('depósito')) {
+             this.formEdit.tipo_operacion = 'Egreso';
+          } else {
+             this.formEdit.tipo_operacion = 'Ingreso';
+          }
         },
 
         ordenarPor(columna) {
