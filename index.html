@@ -101,7 +101,7 @@
     </nav>
   </aside>
 
-  <!-- Contenedor Principal Derecho -->
+  <!-- Contenedor Principal -->
   <div class="flex-1 flex flex-col h-full overflow-hidden relative w-full">
     
     <!-- Encabezado -->
@@ -110,7 +110,6 @@
         <div class="flex justify-between items-center">
           
           <div class="flex items-center gap-3">
-            <!-- Botón Hamburguesa (Móviles) -->
             <button @click="sidebarAbierto = true" class="md:hidden p-1.5 bg-zorrilla-dark rounded-md hover:bg-indigo-600 focus:outline-none transition-colors">
               <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
             </button>
@@ -123,7 +122,6 @@
           <span class="text-xs bg-zorrilla-dark px-2.5 py-1 rounded-full text-blue-200 border border-zorrilla font-medium shrink-0" x-text="tablaActiva === 'registros' ? remesas.length + ' regs' : datosGenericos.length + ' regs'"></span>
         </div>
         
-        <!-- Controles de Filtro (Solo para Registros) -->
         <div x-show="tablaActiva === 'registros'" class="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs sm:text-sm">
           <div>
             <select x-model="asesorSeleccionado" @change="onFiltroPadreChange()" class="bg-zorrilla-dark text-white p-2 rounded border border-zorrilla focus:outline-none w-full text-xs sm:text-sm">
@@ -168,15 +166,12 @@
       </div>
     </header>
 
-    <!-- Área de Contenido con Scroll -->
+    <!-- Área de Contenido -->
     <main class="flex-1 overflow-x-hidden overflow-y-auto bg-gray-100 p-3 sm:p-4 pb-12 w-full">
       
-      <!-- ========================================== -->
-      <!-- VISTA PRINCIPAL: REGISTROS (VISOR REMESAS) -->
-      <!-- ========================================== -->
+      <!-- VISTA PRINCIPAL: REGISTROS -->
       <div x-show="tablaActiva === 'registros'" class="max-w-6xl mx-auto space-y-4">
         
-        <!-- Totales -->
         <div class="grid grid-cols-2 gap-3">
           <div class="bg-white p-3 sm:p-4 rounded-lg shadow border-l-4 border-indigo-700">
             <p class="text-[10px] sm:text-xs text-gray-500 uppercase font-semibold">Operaciones</p>
@@ -188,7 +183,6 @@
           </div>
         </div>
 
-        <!-- Leyenda de colores -->
         <div class="flex items-center gap-4 text-xs px-1 text-gray-600">
           <div class="flex items-center gap-1.5">
             <span class="w-3 h-3 rounded-full bg-emerald-200 border border-emerald-400"></span>
@@ -200,16 +194,18 @@
           </div>
         </div>
 
-        <!-- Tabla Registros -->
         <div class="bg-white rounded-lg shadow overflow-hidden">
           
-          <!-- Vista Móvil Registros -->
+          <!-- Móvil -->
           <div class="block md:hidden divide-y divide-gray-200">
             <template x-for="r in remesasOrdenadas" :key="r.id">
               <div class="p-3.5 space-y-2 transition-colors border-l-4" :class="obtenerColorFila(r.tipo_operacion)">
                 <div class="flex justify-between items-center gap-1">
                   <span class="font-bold text-xs text-gray-500" x-text="'#' + r.id"></span>
-                  <span class="px-2 py-0.5 text-[10px] uppercase font-bold rounded bg-white shadow-sm border border-gray-200 text-gray-600" x-text="r.tipo_operacion || '-'"></span>
+                  
+                  <!-- Etiqueta Traducida Visualmente -->
+                  <span class="px-2 py-0.5 text-[10px] uppercase font-bold rounded bg-white shadow-sm border border-gray-200 text-gray-600" x-text="traducirTipo(r.tipo_operacion)"></span>
+                  
                   <button @click="abrirEditar(r)" type="button" class="inline-flex items-center gap-1 bg-white/90 active:bg-gray-100 text-indigo-900 px-2.5 py-1 rounded-md border border-gray-300 text-xs font-mono font-bold shadow-sm">
                     <span x-text="r.hash_corto || 'Ver detalle'"></span>
                   </button>
@@ -223,7 +219,7 @@
             </template>
           </div>
 
-          <!-- Vista Escritorio Registros -->
+          <!-- Escritorio -->
           <div class="hidden md:block overflow-x-auto w-full">
             <table class="w-full text-left border-collapse min-w-[700px]">
               <thead class="bg-gray-50 border-b text-xs text-gray-500 uppercase">
@@ -241,9 +237,12 @@
                   <tr class="transition-colors border-l-4" :class="obtenerColorFila(r.tipo_operacion)">
                     <td class="p-3 font-semibold text-gray-500" x-text="'#' + r.id"></td>
                     <td class="p-3 font-medium text-gray-800" x-text="r.nombre_asesor"></td>
+                    
+                    <!-- Etiqueta Traducida Visualmente -->
                     <td class="p-3">
-                      <span class="px-2 py-0.5 text-xs font-bold rounded uppercase bg-white border border-gray-200 text-gray-600 shadow-sm" x-text="r.tipo_operacion || '-'"></span>
+                      <span class="px-2 py-0.5 text-xs font-bold rounded uppercase bg-white border border-gray-200 text-gray-600 shadow-sm" x-text="traducirTipo(r.tipo_operacion)"></span>
                     </td>
+                    
                     <td class="p-3">
                       <button @click="abrirEditar(r)" type="button" class="font-mono text-xs bg-white/90 hover:bg-gray-100 text-indigo-900 px-2.5 py-1 rounded border border-gray-300 font-bold transition-colors inline-flex items-center gap-1.5 shadow-sm">
                         <span x-text="r.hash_corto || 'Sin Hash'"></span>
@@ -260,9 +259,7 @@
         </div>
       </div>
 
-      <!-- ========================================== -->
-      <!-- VISTA GENÉRICA: OTRAS TABLAS (REVISIÓN)    -->
-      <!-- ========================================== -->
+      <!-- VISTA GENÉRICA: OTRAS TABLAS -->
       <div x-show="tablaActiva !== 'registros'" x-cloak class="max-w-full mx-auto">
         <div class="bg-white rounded-lg shadow overflow-hidden">
           <div class="p-4 border-b border-gray-100 flex justify-between items-center bg-gray-50">
@@ -290,7 +287,6 @@
                     </template>
                   </tr>
                 </template>
-                <!-- Si la tabla está vacía -->
                 <tr x-show="datosGenericos.length === 0">
                   <td :colspan="columnasGenericas.length || 1" class="p-8 text-center text-gray-400 italic bg-gray-50">No hay registros almacenados en esta tabla.</td>
                 </tr>
@@ -303,7 +299,7 @@
     </main>
   </div>
 
-  <!-- Modal Edición de Remesas (Se mantiene intacto) -->
+  <!-- Modal -->
   <div x-show="modalAbierto" class="fixed inset-0 bg-black/60 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 overflow-y-auto" x-cloak>
     <div @click.outside="modalAbierto = false" class="bg-white rounded-t-2xl sm:rounded-xl p-4 sm:p-6 max-w-md w-full space-y-3.5 shadow-2xl max-h-[92vh] overflow-y-auto">
       
@@ -319,12 +315,14 @@
       </div>
 
       <div class="space-y-3">
+        <!-- Input Selector: Muestra Depósito / Transferencia pero guarda el valor real en DB si es necesario -->
         <div>
           <label class="block text-xs font-semibold text-gray-600 mb-1">Tipo de Operación</label>
           <select x-model="formEdit.tipo_operacion" class="w-full border p-2 rounded text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none font-semibold bg-gray-50">
             <option value="">- Seleccionar -</option>
-            <option value="Deposito">Depósito</option>
-            <option value="Transferencia">Transferencia</option>
+            <!-- Estos values se pueden cambiar a Ingreso/Egreso si la DB requiere la palabra literal -->
+            <option value="Ingreso">Depósito</option>
+            <option value="Egreso">Transferencia</option>
           </select>
         </div>
 
@@ -408,11 +406,9 @@
         asesores: [], hashes: [], remesas: [],
         asesorSeleccionado: '', fechaInicio: '', fechaFin: '', hashSeleccionado: '',
         
-        // Variables de navegación y visor genérico
         tablaActiva: 'registros',
         sidebarAbierto: false,
-        datosGenericos: [],
-        columnasGenericas: [],
+        datosGenericos: [], columnasGenericas: [],
 
         modalAbierto: false, verMas: false,
         sortCol: 'id', sortAsc: false,
@@ -422,8 +418,6 @@
           try {
             const resA = await fetch('/api/asesores');
             if (resA.ok) this.asesores = await resA.json();
-            
-            // Cargar datos principales al inicio
             await this.cambiarTabla('registros');
           } catch (e) {
             console.error(e);
@@ -434,19 +428,17 @@
                 preloader.classList.add('opacity-0', 'pointer-events-none');
                 setTimeout(() => preloader.remove(), 700);
               }
-            }, 1800); // Ajusté un poco el tiempo a 1.8s
+            }, 1800);
           }
         },
 
-        // Cambiar entre el visor de remesas y las tablas de depuración
         async cambiarTabla(nombre) {
           this.tablaActiva = nombre;
-          this.sidebarAbierto = false; // Cierra menú en móvil
+          this.sidebarAbierto = false;
 
           if (nombre === 'registros') {
             await this.onFiltroPadreChange();
           } else {
-            // Lógica del visor genérico
             this.datosGenericos = [];
             this.columnasGenericas = [];
             try {
@@ -458,19 +450,28 @@
                 }
               }
             } catch (e) {
-              console.error('Error cargando tabla genérica:', e);
+              console.error('Error:', e);
             }
           }
         },
 
+        // Traductor para mostrar "Depósito" en vez de "INGRESO"
+        traducirTipo(tipo) {
+          if (!tipo) return '-';
+          const t = String(tipo).toLowerCase().trim();
+          if (t.includes('ingreso') || t.includes('deposito') || t.includes('depósito')) return 'DEPÓSITO';
+          if (t.includes('egreso') || t.includes('transfe')) return 'TRANSFERENCIA';
+          return tipo; // Si no es ninguno de los dos, muestra el texto crudo
+        },
+
+        // Colorea según la palabra original que venga
         obtenerColorFila(tipo) {
           if (!tipo) return 'bg-white hover:bg-gray-50 border-l-transparent';
-
           const t = String(tipo).toLowerCase().trim();
-          if (t.includes('deposito') || t.includes('depósito') || t.includes('ingreso')) {
+          if (t.includes('ingreso') || t.includes('deposito') || t.includes('depósito')) {
             return 'bg-emerald-50/80 border-l-emerald-500 hover:bg-emerald-100/80';
           }
-          if (t.includes('transfe') || t.includes('egreso')) {
+          if (t.includes('egreso') || t.includes('transfe')) {
             return 'bg-rose-50/80 border-l-rose-500 hover:bg-rose-100/80';
           }
           return 'bg-white hover:bg-gray-50 border-l-transparent';
