@@ -123,13 +123,14 @@
             </select>
           </div>
 
-          <div class="relative">
-            <button @click.stop="fechaMenuAbierto = !fechaMenuAbierto" type="button" class="bg-zorrilla-dark text-white p-2 rounded border border-zorrilla focus:outline-none w-full text-left flex justify-between items-center text-xs sm:text-sm">
+          <!-- Filtro de Fecha Corregido -->
+          <div class="relative" @click.outside="fechaMenuAbierto = false">
+            <button @click="fechaMenuAbierto = !fechaMenuAbierto" type="button" class="bg-zorrilla-dark text-white p-2 rounded border border-zorrilla focus:outline-none w-full text-left flex justify-between items-center text-xs sm:text-sm">
               <span x-text="obtenerTextoRangoFecha()" class="truncate"></span>
               <svg class="w-3.5 h-3.5 ml-1 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
             </button>
 
-            <div x-show="fechaMenuAbierto" @click.outside="fechaMenuAbierto = false" x-cloak class="absolute left-0 right-0 sm:right-auto mt-1 w-full sm:w-72 bg-white text-gray-800 rounded-lg shadow-2xl p-3 z-50 border border-gray-200 space-y-2.5">
+            <div x-show="fechaMenuAbierto" x-cloak class="absolute left-0 right-0 sm:right-auto mt-1 w-full sm:w-72 bg-white text-gray-800 rounded-lg shadow-2xl p-3 z-50 border border-gray-200 space-y-2.5">
               <div>
                 <label class="block text-xs font-semibold text-gray-600 mb-1">Desde</label>
                 <input type="date" x-model="fechaInicio" @change="onFiltroPadreChange()" class="w-full border p-2 rounded text-xs focus:ring-2 focus:ring-indigo-500 focus:outline-none">
