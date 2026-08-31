@@ -5,6 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>Visor de Remesas | J. Zorrilla</title>
   
+  <!-- Favicon desde el repositorio -->
+  <link rel="icon" type="image/png" href="/logo.png">
+
   <script src="https://cdn.tailwindcss.com"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
   <style>
@@ -13,9 +16,14 @@
       touch-action: manipulation;
       -webkit-overflow-scrolling: touch;
     }
+    /* Color de marca exacto de J. Zorrilla */
+    .bg-zorrilla { background-color: #2e3192; }
+    .bg-zorrilla-dark { background-color: #1f2268; }
+    .border-zorrilla { border-color: #4347bd; }
+
     @keyframes logoPulse {
-      0%, 100% { transform: scale(1); opacity: 0.95; filter: drop-shadow(0 0 10px rgba(59, 130, 246, 0.5)); }
-      50% { transform: scale(1.06); opacity: 1; filter: drop-shadow(0 0 22px rgba(59, 130, 246, 0.8)); }
+      0%, 100% { transform: scale(1); opacity: 0.95; }
+      50% { transform: scale(1.06); opacity: 1; filter: drop-shadow(0 0 15px rgba(255, 255, 255, 0.3)); }
     }
     .animate-logo-pulse {
       animation: logoPulse 2s infinite ease-in-out;
@@ -24,37 +32,35 @@
 </head>
 <body class="bg-gray-100 font-sans text-gray-900 min-h-screen" x-data="dashboardApp()" x-init="init()">
 
-  <!-- Pantalla de Carga Inicial con el Logo Real del Cliente -->
-  <div id="preloader" class="fixed inset-0 bg-slate-900 z-[100] flex flex-col items-center justify-center p-4 transition-all duration-700 opacity-100">
+  <!-- Pantalla de Carga Inicial (Preloader) con color de marca exacto -->
+  <div id="preloader" class="fixed inset-0 bg-zorrilla z-[100] flex flex-col items-center justify-center p-4 transition-all duration-700 opacity-100">
     <div class="flex flex-col items-center max-w-xs text-center space-y-4">
       
-      <!-- Logo Real Transparente de J. Zorrilla -->
       <div class="relative flex items-center justify-center">
-        <div class="absolute inset-0 rounded-full bg-blue-500/20 blur-xl animate-pulse"></div>
-        <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAUAAAAFACAYAAADNkKWqAAEAAElEQVR42u" alt="Logo J. Zorrilla" class="w-36 h-36 object-contain relative z-10 animate-logo-pulse">
+        <div class="absolute inset-0 rounded-full bg-white/10 blur-xl animate-pulse"></div>
+        <img src="/logo.png" alt="Logo J. Zorrilla" class="w-36 h-36 object-contain relative z-10 animate-logo-pulse">
       </div>
       
       <div class="space-y-1">
         <h2 class="text-white text-lg font-bold tracking-wider uppercase">J. ZORRILLA</h2>
-        <p class="text-blue-400 text-xs font-semibold tracking-wide">Cambios y Remesas Internacionales</p>
+        <p class="text-blue-200 text-xs font-semibold tracking-wide">Cambios y Remesas Internacionales</p>
       </div>
 
-      <div class="w-48 bg-slate-800 rounded-full h-1.5 overflow-hidden border border-slate-700/50 mt-2">
-        <div class="bg-gradient-to-r from-blue-500 to-cyan-400 h-full w-full animate-pulse"></div>
+      <div class="w-48 bg-zorrilla-dark rounded-full h-1.5 overflow-hidden border border-white/20 mt-2">
+        <div class="bg-gradient-to-r from-orange-500 to-amber-400 h-full w-full animate-pulse"></div>
       </div>
-      <span class="text-[10px] text-slate-400 tracking-widest font-mono">INICIALIZANDO SISTEMA...</span>
+      <span class="text-[10px] text-blue-200 tracking-widest font-mono">INICIALIZANDO SISTEMA...</span>
     </div>
   </div>
 
-  <!-- Encabezado con Logo Real de J. Zorrilla -->
-  <header class="bg-blue-700 text-white p-3 sm:p-4 shadow-md sticky top-0 z-20">
+  <!-- Encabezado con color idéntico al fondo del logo -->
+  <header class="bg-zorrilla text-white p-3 sm:p-4 shadow-md sticky top-0 z-20">
     <div class="max-w-6xl mx-auto flex flex-col gap-2.5">
       <div class="flex justify-between items-center">
         
-        <!-- Logo Real en Encabezado -->
-        <div class="flex items-center gap-2.5">
-          <div class="bg-white/10 p-1 rounded-full shadow border border-white/20 backdrop-blur-sm shrink-0 flex items-center justify-center">
-            <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAUAAAAFACAYAAADNkKWqAAEAAElEQVR42u" alt="Logo J. Zorrilla" class="w-9 h-9 sm:w-10 sm:h-10 object-contain">
+        <div class="flex items-center gap-3">
+          <div class="bg-zorrilla p-0.5 rounded-lg shrink-0 flex items-center justify-center">
+            <img src="/logo.png" alt="Logo J. Zorrilla" class="w-10 h-10 sm:w-12 sm:h-12 object-contain">
           </div>
           <div>
             <h1 class="text-base sm:text-xl font-bold tracking-wide leading-tight">Visor de Remesas</h1>
@@ -62,7 +68,7 @@
           </div>
         </div>
 
-        <span class="text-xs bg-blue-800 px-2.5 py-1 rounded-full text-blue-200 border border-blue-500 font-medium shrink-0" x-text="remesas.length + ' regs'"></span>
+        <span class="text-xs bg-zorrilla-dark px-2.5 py-1 rounded-full text-blue-200 border border-zorrilla font-medium shrink-0" x-text="remesas.length + ' regs'"></span>
       </div>
       
       <!-- Controles de Filtro -->
@@ -70,7 +76,7 @@
         
         <!-- 1. Asesor -->
         <div>
-          <select x-model="asesorSeleccionado" @change="onFiltroPadreChange()" class="bg-blue-800 text-white p-2 rounded border border-blue-500 focus:outline-none w-full text-xs sm:text-sm">
+          <select x-model="asesorSeleccionado" @change="onFiltroPadreChange()" class="bg-zorrilla-dark text-white p-2 rounded border border-zorrilla focus:outline-none w-full text-xs sm:text-sm">
             <option value="">Todos los Asesores</option>
             <template x-for="a in asesores" :key="a.nombre_asesor">
               <option :value="a.nombre_asesor" x-text="a.nombre_asesor"></option>
@@ -80,7 +86,7 @@
 
         <!-- 2. Rango de Fechas -->
         <div class="relative" @click.outside="fechaMenuAbierto = false">
-          <button @click="fechaMenuAbierto = !fechaMenuAbierto" type="button" class="bg-blue-800 text-white p-2 rounded border border-blue-500 focus:outline-none w-full text-left flex justify-between items-center text-xs sm:text-sm">
+          <button @click="fechaMenuAbierto = !fechaMenuAbierto" type="button" class="bg-zorrilla-dark text-white p-2 rounded border border-zorrilla focus:outline-none w-full text-left flex justify-between items-center text-xs sm:text-sm">
             <span x-text="obtenerTextoRangoFecha()" class="truncate"></span>
             <svg class="w-3.5 h-3.5 ml-1 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
           </button>
@@ -88,22 +94,22 @@
           <div x-show="fechaMenuAbierto" x-cloak class="absolute left-0 right-0 sm:right-auto mt-1 w-full sm:w-72 bg-white text-gray-800 rounded-lg shadow-2xl p-3 z-50 border border-gray-200 space-y-2.5">
             <div>
               <label class="block text-xs font-semibold text-gray-600 mb-1">Desde</label>
-              <input type="date" x-model="fechaInicio" @change="onFiltroPadreChange()" class="w-full border p-2 rounded text-xs focus:ring-2 focus:ring-blue-500 focus:outline-none">
+              <input type="date" x-model="fechaInicio" @change="onFiltroPadreChange()" class="w-full border p-2 rounded text-xs focus:ring-2 focus:ring-indigo-500 focus:outline-none">
             </div>
             <div>
               <label class="block text-xs font-semibold text-gray-600 mb-1">Hasta</label>
-              <input type="date" x-model="fechaFin" @change="onFiltroPadreChange()" class="w-full border p-2 rounded text-xs focus:ring-2 focus:ring-blue-500 focus:outline-none">
+              <input type="date" x-model="fechaFin" @change="onFiltroPadreChange()" class="w-full border p-2 rounded text-xs focus:ring-2 focus:ring-indigo-500 focus:outline-none">
             </div>
             <div class="flex justify-between items-center pt-2 border-t">
               <button @click="limpiarFechas()" type="button" class="text-xs text-red-600 hover:underline font-semibold">Limpiar</button>
-              <button @click="fechaMenuAbierto = false" type="button" class="px-3 py-1 bg-blue-600 text-white rounded text-xs font-semibold">Aplicar</button>
+              <button @click="fechaMenuAbierto = false" type="button" class="px-3 py-1 bg-zorrilla text-white rounded text-xs font-semibold">Aplicar</button>
             </div>
           </div>
         </div>
 
         <!-- 3. Hash -->
         <div>
-          <select x-model="hashSeleccionado" @change="cargarRemesas()" class="bg-blue-800 text-white p-2 rounded border border-blue-500 focus:outline-none w-full text-xs sm:text-sm">
+          <select x-model="hashSeleccionado" @change="cargarRemesas()" class="bg-zorrilla-dark text-white p-2 rounded border border-zorrilla focus:outline-none w-full text-xs sm:text-sm">
             <option value="">Todos los Hashes</option>
             <template x-for="h in hashes" :key="h.hash_corto">
               <option :value="h.hash_corto" x-text="h.hash_corto"></option>
@@ -118,7 +124,7 @@
   <main class="max-w-6xl mx-auto p-3 sm:p-4 space-y-4 pb-12">
     <!-- Totales -->
     <div class="grid grid-cols-2 gap-3">
-      <div class="bg-white p-3 sm:p-4 rounded-lg shadow border-l-4 border-blue-600">
+      <div class="bg-white p-3 sm:p-4 rounded-lg shadow border-l-4 border-indigo-700">
         <p class="text-[10px] sm:text-xs text-gray-500 uppercase font-semibold">Operaciones</p>
         <p class="text-lg sm:text-2xl font-bold" x-text="remesas.length"></p>
       </div>
@@ -131,15 +137,15 @@
     <!-- Lista de Registros -->
     <div class="bg-white rounded-lg shadow overflow-hidden">
       
-      <!-- Móvil -->
+      <!-- Vista Móvil -->
       <div class="block md:hidden divide-y divide-gray-100">
         <template x-for="r in remesasOrdenadas" :key="r.id">
           <div class="p-3.5 space-y-2 hover:bg-gray-50 transition-colors">
             <div class="flex justify-between items-center">
               <span class="font-bold text-xs text-gray-400" x-text="'#' + r.id"></span>
               
-              <button @click="abrirEditar(r)" type="button" class="inline-flex items-center gap-1 bg-blue-50 active:bg-blue-200 text-blue-700 px-2.5 py-1.5 rounded-md border border-blue-200 text-xs font-mono font-bold shadow-sm">
-                <svg class="w-3 h-3 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+              <button @click="abrirEditar(r)" type="button" class="inline-flex items-center gap-1 bg-indigo-50 active:bg-indigo-200 text-indigo-800 px-2.5 py-1.5 rounded-md border border-indigo-200 text-xs font-mono font-bold shadow-sm">
+                <svg class="w-3 h-3 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
                 <span x-text="r.hash_corto || 'Ver detalle'"></span>
               </button>
 
@@ -154,7 +160,7 @@
         </template>
       </div>
 
-      <!-- Escritorio -->
+      <!-- Vista Escritorio -->
       <div class="hidden md:block overflow-x-auto w-full">
         <table class="w-full text-left border-collapse min-w-[600px]">
           <thead class="bg-gray-50 border-b text-xs text-gray-500 uppercase">
@@ -172,9 +178,9 @@
                 <td class="p-3 font-semibold text-gray-400" x-text="'#' + r.id"></td>
                 <td class="p-3 font-medium" x-text="r.nombre_asesor"></td>
                 <td class="p-3">
-                  <button @click="abrirEditar(r)" type="button" class="font-mono text-xs bg-blue-50 hover:bg-blue-100 text-blue-700 px-2.5 py-1 rounded border border-blue-200 font-bold transition-colors inline-flex items-center gap-1.5">
+                  <button @click="abrirEditar(r)" type="button" class="font-mono text-xs bg-indigo-50 hover:bg-indigo-100 text-indigo-800 px-2.5 py-1 rounded border border-indigo-200 font-bold transition-colors inline-flex items-center gap-1.5">
                     <span x-text="r.hash_corto || 'Sin Hash'"></span>
-                    <svg class="w-3.5 h-3.5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+                    <svg class="w-3.5 h-3.5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
                   </button>
                 </td>
                 <td class="p-3 font-semibold">$<span x-text="Number(r.monto || 0).toFixed(2)"></span></td>
@@ -198,7 +204,7 @@
           <p class="text-xs text-gray-500 font-mono" x-text="'Hash: ' + (formEdit.hash_corto || 'N/A')"></p>
         </div>
         <div class="flex gap-1.5 items-center">
-          <span class="px-2 py-0.5 text-xs font-bold rounded bg-blue-100 text-blue-800 border border-blue-200" x-text="formEdit.moneda || 'USD'"></span>
+          <span class="px-2 py-0.5 text-xs font-bold rounded bg-indigo-100 text-indigo-800 border border-indigo-200" x-text="formEdit.moneda || 'USD'"></span>
           <span class="px-2 py-0.5 text-xs font-bold rounded border" :class="formEdit.estado === 'P' || formEdit.estado === 'Pendiente' ? 'bg-yellow-100 text-yellow-800 border-yellow-300' : 'bg-green-100 text-green-800 border-green-300'" x-text="formEdit.estado || 'P'"></span>
         </div>
       </div>
@@ -206,34 +212,34 @@
       <div class="space-y-3">
         <div>
           <label class="block text-xs font-semibold text-gray-600 mb-1">Titular</label>
-          <input type="text" x-model="formEdit.titular" class="w-full border p-2 rounded text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none">
+          <input type="text" x-model="formEdit.titular" class="w-full border p-2 rounded text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none">
         </div>
 
         <div class="grid grid-cols-2 gap-2.5">
           <div>
             <label class="block text-xs font-semibold text-gray-600 mb-1">Monto</label>
-            <input type="number" step="0.01" x-model="formEdit.monto" class="w-full border p-2 rounded text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none">
+            <input type="number" step="0.01" x-model="formEdit.monto" class="w-full border p-2 rounded text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none">
           </div>
           <div>
             <label class="block text-xs font-semibold text-gray-600 mb-1">Número de Tasa</label>
-            <input type="text" x-model="formEdit.tasa" class="w-full border p-2 rounded text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none">
+            <input type="text" x-model="formEdit.tasa" class="w-full border p-2 rounded text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none">
           </div>
         </div>
 
         <div class="grid grid-cols-2 gap-2.5">
           <div>
             <label class="block text-xs font-semibold text-gray-600 mb-1">Moneda</label>
-            <input type="text" x-model="formEdit.moneda" class="w-full border p-2 rounded text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none">
+            <input type="text" x-model="formEdit.moneda" class="w-full border p-2 rounded text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none">
           </div>
           <div>
             <label class="block text-xs font-semibold text-gray-600 mb-1">Estado</label>
-            <input type="text" x-model="formEdit.estado" class="w-full border p-2 rounded text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none">
+            <input type="text" x-model="formEdit.estado" class="w-full border p-2 rounded text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none">
           </div>
         </div>
       </div>
 
       <div class="pt-1">
-        <button @click="verMas = !verMas" type="button" class="text-xs font-semibold text-blue-600 hover:text-blue-800 flex items-center gap-1 focus:outline-none py-1">
+        <button @click="verMas = !verMas" type="button" class="text-xs font-semibold text-indigo-700 hover:text-indigo-900 flex items-center gap-1 focus:outline-none py-1">
           <span x-text="verMas ? 'Ver menos detalles' : 'Ver más detalles...'"></span>
           <svg class="w-3.5 h-3.5 transform transition-transform" :class="verMas ? 'rotate-180' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
         </button>
@@ -247,7 +253,7 @@
           </div>
           <div>
             <label class="block text-xs font-semibold text-gray-600 mb-1">Banco</label>
-            <input type="text" x-model="formEdit.banco" class="w-full border p-2 rounded text-xs focus:ring-2 focus:ring-blue-500 focus:outline-none">
+            <input type="text" x-model="formEdit.banco" class="w-full border p-2 rounded text-xs focus:ring-2 focus:ring-indigo-500 focus:outline-none">
           </div>
         </div>
 
@@ -259,9 +265,9 @@
           <div>
             <label class="block text-xs font-semibold text-gray-600 mb-1">Link Adjunto</label>
             <div class="flex gap-1">
-              <input type="text" x-model="formEdit.hiperlink" class="w-full border p-1.5 rounded text-xs focus:ring-2 focus:ring-blue-500 focus:outline-none">
+              <input type="text" x-model="formEdit.hiperlink" class="w-full border p-1.5 rounded text-xs focus:ring-2 focus:ring-indigo-500 focus:outline-none">
               <template x-if="formEdit.hiperlink">
-                <a :href="formEdit.hiperlink" target="_blank" class="p-1.5 bg-gray-100 hover:bg-gray-200 rounded border flex items-center justify-center text-blue-600 shrink-0">
+                <a :href="formEdit.hiperlink" target="_blank" class="p-1.5 bg-gray-100 hover:bg-gray-200 rounded border flex items-center justify-center text-indigo-700 shrink-0">
                   <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg>
                 </a>
               </template>
@@ -272,7 +278,7 @@
 
       <div class="flex justify-end gap-2 pt-3 border-t">
         <button @click="modalAbierto = false" class="w-full sm:w-auto px-4 py-2 border rounded-lg text-xs font-semibold text-gray-600 hover:bg-gray-50">Cancelar</button>
-        <button @click="guardarCambios()" class="w-full sm:w-auto px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold shadow">Guardar</button>
+        <button @click="guardarCambios()" class="w-full sm:w-auto px-5 py-2 bg-zorrilla hover:bg-zorrilla-dark text-white rounded-lg text-xs font-bold shadow">Guardar</button>
       </div>
 
     </div>
@@ -295,7 +301,6 @@
           } catch (e) {
             console.error(e);
           } finally {
-            // Delay de 2.2 segundos en la pantalla inicial
             setTimeout(() => {
               const preloader = document.getElementById('preloader');
               if (preloader) {
