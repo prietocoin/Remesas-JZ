@@ -258,6 +258,8 @@
                   <th class="p-3 font-semibold">ID Par</th>
                   <th class="p-3 font-semibold">Hashes</th>
                   <th class="p-3 font-semibold">Asesor</th>
+                  <th class="p-3 font-semibold">Titular Envía</th>
+                  <th class="p-3 font-semibold">Titular Recibe</th>
                   <th class="p-3 font-semibold">Par Monedas</th>
                   <th class="p-3 font-semibold">Monto Depósito</th>
                   <th class="p-3 font-semibold">Monto Transferencia</th>
@@ -273,6 +275,8 @@
                     <td class="p-3 font-mono text-xs font-bold text-indigo-900 bg-indigo-50/30" x-text="par.remesa_id || par.id_a_id_b"></td>
                     <td class="p-3 font-mono text-xs text-gray-600" x-text="par.remesa_hash || par.hash_a_hash_b"></td>
                     <td class="p-3 font-semibold text-gray-800" x-text="par.remesa_asesor || par.asesor"></td>
+                    <td class="p-3 font-semibold text-xs text-emerald-800 bg-emerald-50/40 rounded" x-text="par.remesa_titular_envia || par.titular_envia || 'N/A'"></td>
+                    <td class="p-3 font-semibold text-xs text-rose-800 bg-rose-50/40 rounded" x-text="par.remesa_titular_recibe || par.titular_recibe || 'N/A'"></td>
                     <td class="p-3">
                       <span class="px-2 py-0.5 text-xs font-bold rounded bg-blue-100 text-blue-900 border border-blue-200" x-text="par.remesa_monedas || par.remesa"></span>
                     </td>
@@ -291,7 +295,7 @@
                   </tr>
                 </template>
                 <tr x-show="datosPares.length === 0">
-                  <td colspan="10" class="p-8 text-center text-gray-400 italic bg-gray-50">No hay remesas conciliadas en la tabla vista_pares.</td>
+                  <td colspan="12" class="p-8 text-center text-gray-400 italic bg-gray-50">No hay remesas conciliadas en la tabla vista_pares.</td>
                 </tr>
               </tbody>
             </table>
