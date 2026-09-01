@@ -48,7 +48,6 @@
     </div>
   </div>
 
-  <!-- Mobile Sidebar Overlay -->
   <div x-show="sidebarAbierto" x-transition.opacity class="fixed inset-0 bg-black/60 z-40 md:hidden" @click="sidebarAbierto = false" x-cloak></div>
 
   <!-- Sidebar -->
@@ -94,10 +93,9 @@
     </nav>
   </aside>
 
-  <!-- Contenedor Principal Derecho -->
+  <!-- Contenedor Principal -->
   <div class="flex-1 flex flex-col h-full overflow-hidden relative w-full">
     
-    <!-- Encabezado -->
     <header class="bg-zorrilla text-white p-3 sm:p-4 shadow-md z-20 shrink-0">
       <div class="max-w-6xl mx-auto flex flex-col gap-3">
         <div class="flex justify-between items-center">
@@ -112,7 +110,6 @@
           <span class="text-xs bg-zorrilla-dark px-2.5 py-1 rounded-full text-blue-200 border border-zorrilla font-medium shrink-0" x-text="tablaActiva === 'registros' ? remesas.length + ' regs' : (tablaActiva === 'vista_pares' ? datosPares.length + ' pares' : datosGenericos.length + ' regs')"></span>
         </div>
         
-        <!-- Filtros (Visible solo en Registros) -->
         <div x-show="tablaActiva === 'registros'" class="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs sm:text-sm">
           <div>
             <select x-model="asesorSeleccionado" @change="onFiltroPadreChange()" class="bg-zorrilla-dark text-white p-2 rounded border border-zorrilla focus:outline-none w-full text-xs sm:text-sm">
@@ -157,7 +154,6 @@
       </div>
     </header>
 
-    <!-- Área de Contenido -->
     <main class="flex-1 overflow-x-hidden overflow-y-auto bg-gray-100 p-3 sm:p-4 pb-12 w-full">
       
       <!-- VISTA: REGISTROS -->
@@ -240,7 +236,7 @@
         </div>
       </div>
 
-      <!-- VISTA: VISTA PARES DEDICADA -->
+      <!-- VISTA: VISTA PARES CON DESGLOSE COMPLETO -->
       <div x-show="tablaActiva === 'vista_pares'" x-cloak class="max-w-full mx-auto space-y-4">
         <div class="bg-white rounded-lg shadow overflow-hidden">
           <div class="p-4 border-b border-gray-100 flex justify-between items-center bg-gray-50">
@@ -260,8 +256,15 @@
                   <th class="p-3 font-semibold">Asesor</th>
                   <th class="p-3 font-semibold">Titular Envía</th>
                   <th class="p-3 font-semibold">Titular Recibe</th>
-                  <th class="p-3 font-semibold">Par Monedas</th>
-                  <th class="p-3 font-semibold">Monto Depósito</th>
+                  <th class="p-3 font-semibold">Par Divisas</th>
+                  
+                  <!-- Columnas del Desglose -->
+                  <th class="p-3 font-semibold bg-indigo-950">Monto Depositado</th>
+                  <th class="p-3 font-semibold bg-indigo-950">Monto Remesa (Bruto)</th>
+                  <th class="p-3 font-semibold bg-indigo-950">Comisión (3%)</th>
+                  <th class="p-3 font-semibold bg-indigo-950">Monto Neto</th>
+                  <th class="p-3 font-semibold bg-indigo-950">Estado Comisión</th>
+                  
                   <th class="p-3 font-semibold">Monto Transferencia</th>
                   <th class="p-3 font-semibold">Tasa / Factor</th>
                   <th class="p-3 font-semibold">Monto Esperado</th>
@@ -280,7 +283,16 @@
                     <td class="p-3">
                       <span class="px-2 py-0.5 text-xs font-bold rounded bg-blue-100 text-blue-900 border border-blue-200" x-text="par.remesa_monedas || par.remesa"></span>
                     </td>
-                    <td class="p-3 font-bold text-emerald-700" x-text="Number(par.remesa_deposito || par.deposito || 0).toLocaleString('en-US', {minimumFractionDigits: 2})"></td>
+
+                    <!-- Celdas del Desglose de Remesa -->
+                    <td class="p-3 font-bold text-emerald-700 bg-emerald-50/20" x-text="Number(par.remesa_deposito || par.deposito || 0).toLocaleString('en-US', {minimumFractionDigits: 2})"></td>
+                    <td class="p-3 font-bold text-gray-900 bg-indigo-50/20" x-text="Number(par.remesa_monto_bruto || par.remesa_deposito || 0).toLocaleString('en-US', {minimumFractionDigits: 2})"></td>
+                    <td class="p-3 font-semibold text-amber-700 bg-amber-50/20" x-text="Number(par.remesa_comision || (par.remesa_deposito ? par.remesa_deposito * 0.03 : 0)).toLocaleString('en-US', {minimumFractionDigits: 2})"></td>
+                    <td class="p-3 font-bold text-indigo-800 bg-indigo-50/20" x-text="Number(par.remesa_monto_neto || (par.remesa_deposito ? par.remesa_deposito * 0.97 : 0)).toLocaleString('en-US', {minimumFractionDigits: 2})"></td>
+                    <td class="p-3">
+                      <span class="px-2 py-0.5 text-xs font-bold rounded" :class="(par.remesa_estado_comision || 'PENDIENTE') === 'DESCONTADA' ? 'bg-emerald-100 text-emerald-800 border border-emerald-300' : 'bg-amber-100 text-amber-800 border border-amber-300'" x-text="par.remesa_estado_comision || 'PENDIENTE'"></span>
+                    </td>
+
                     <td class="p-3 font-bold text-rose-700" x-text="Number(par.remesa_transferencia || par.transferencia || 0).toLocaleString('en-US', {minimumFractionDigits: 2})"></td>
                     <td class="p-3 font-mono text-xs text-gray-700">
                       <span class="font-bold text-indigo-800" x-text="par.remesa_tasa_numero || par.tasa_numero"></span>
@@ -295,7 +307,7 @@
                   </tr>
                 </template>
                 <tr x-show="datosPares.length === 0">
-                  <td colspan="12" class="p-8 text-center text-gray-400 italic bg-gray-50">No hay remesas conciliadas en la tabla vista_pares.</td>
+                  <td colspan="16" class="p-8 text-center text-gray-400 italic bg-gray-50">No hay remesas conciliadas en la tabla vista_pares.</td>
                 </tr>
               </tbody>
             </table>
@@ -343,7 +355,7 @@
     </main>
   </div>
 
-  <!-- Modal con Color de Fondo Adaptable y Selector Rápido -->
+  <!-- Modal de Edición -->
   <div x-show="modalAbierto" class="fixed inset-0 bg-black/60 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 overflow-y-auto" x-cloak>
     <div 
       @click.outside="modalAbierto = false" 
