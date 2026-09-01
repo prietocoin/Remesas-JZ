@@ -350,7 +350,7 @@
         <div class="grid grid-cols-2 gap-2.5">
           <div>
             <label class="block text-xs font-semibold text-gray-700 mb-1">Fecha / Hora</label>
-            <input type="text" x-model="formEdit.fecha_hora" readonly class="w-full border border-gray-300/80 bg-white/50 p-2 rounded text-xs text-gray-600 shadow-sm">
+            <input type="text" x-model="formEdit.fecha_hora" readonly class="w-full border border-gray-300/80 bg-white/50 p-2 rounded text-xs text-gray-600 shadow-sm cursor-not-allowed">
           </div>
           <div>
             <label class="block text-xs font-semibold text-gray-700 mb-1">Banco</label>
@@ -359,9 +359,18 @@
         </div>
 
         <div class="grid grid-cols-2 gap-2.5">
+          <!-- TIMESTAMP EDITABLE Y VINCULADO EN TIEMPO REAL -->
           <div>
-            <label class="block text-xs font-semibold text-gray-700 mb-1">Timestamp</label>
-            <input type="text" x-model="formEdit.timestamp" class="w-full border border-gray-300/80 bg-white/50 p-2 rounded text-xs text-gray-500 shadow-sm">
+            <label class="block text-xs font-semibold text-gray-700 mb-1 flex items-center gap-1">
+              <span>Timestamp</span>
+              <span class="text-[10px] text-indigo-600 font-bold uppercase">(Editable)</span>
+            </label>
+            <input 
+              type="text" 
+              x-model="formEdit.timestamp" 
+              @input="actualizarFechaHoraDesdeTimestamp()"
+              class="w-full border border-indigo-300 bg-white p-2 rounded text-xs font-mono font-bold text-gray-900 focus:ring-2 focus:ring-indigo-500 focus:outline-none shadow-sm cursor-text"
+            >
           </div>
           <div>
             <label class="block text-xs font-semibold text-gray-700 mb-1">Link Adjunto</label>
@@ -474,6 +483,33 @@
              this.formEdit.tipo_operacion = 'Egreso';
           } else {
              this.formEdit.tipo_operacion = 'Ingreso';
+          }
+        },
+
+        // RECALCULA LA FECHA VISIBLE EN TIEMPO REAL AL CAMBIAR EL TIMESTAMP
+        actualizarFechaHoraDesdeTimestamp() {
+          const raw = String(this.formEdit.timestamp || '').trim();
+          if (!raw) return;
+          let ts = parseInt(raw, 10);
+          if (isNaN(ts)) return;
+
+          // Si el timestamp viene en milisegundos
+          if (ts > 1e11) ts = Math.floor(ts / 1000);
+
+          if (ts > 1000000000) {
+            const fecha = new Date(ts * 1000);
+            // Convertir a desfase de Venezuela (UTC-4)
+            const offsetVET = -4 * 60; // minutos
+            const fechaVET = new Date(fecha.getTime() + (offsetVET + fecha.getTimezoneOffset()) * 60000);
+
+            const yyyy = fechaVET.getFullYear();
+            const mm = String(fechaVET.getMonth() + 1).padStart(2, '0');
+            const dd = String(fechaVET.getDate()).padStart(2, '0');
+            const hh = String(fechaVET.getHours()).padStart(2, '0');
+            const min = String(fechaVET.getMinutes()).padStart(2, '0');
+            const ss = String(fechaVET.getSeconds()).padStart(2, '0');
+
+            this.formEdit.fecha_hora = `${yyyy}-${mm}-${dd} ${hh}:${min}:${ss}`;
           }
         },
 
