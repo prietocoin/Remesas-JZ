@@ -109,7 +109,7 @@
               <h1 class="text-base sm:text-xl font-bold tracking-wide leading-tight capitalize" x-text="tablaActiva === 'registros' ? 'Visor de Remesas' : tablaActiva.replace('_', ' ')"></h1>
             </div>
           </div>
-          <span class="text-xs bg-zorrilla-dark px-2.5 py-1 rounded-full text-blue-200 border border-zorrilla font-medium shrink-0" x-text="tablaActiva === 'registros' ? remesas.length + ' regs' : datosGenericos.length + ' regs'"></span>
+          <span class="text-xs bg-zorrilla-dark px-2.5 py-1 rounded-full text-blue-200 border border-zorrilla font-medium shrink-0" x-text="tablaActiva === 'registros' ? remesas.length + ' regs' : (tablaActiva === 'vista_pares' ? datosPares.length + ' pares' : datosGenericos.length + ' regs')"></span>
         </div>
         
         <!-- Filtros (Visible solo en Registros) -->
@@ -123,7 +123,6 @@
             </select>
           </div>
 
-          <!-- Filtro de Fecha Corregido -->
           <div class="relative" @click.outside="fechaMenuAbierto = false">
             <button @click="fechaMenuAbierto = !fechaMenuAbierto" type="button" class="bg-zorrilla-dark text-white p-2 rounded border border-zorrilla focus:outline-none w-full text-left flex justify-between items-center text-xs sm:text-sm">
               <span x-text="obtenerTextoRangoFecha()" class="truncate"></span>
@@ -163,7 +162,6 @@
       
       <!-- VISTA: REGISTROS -->
       <div x-show="tablaActiva === 'registros'" class="max-w-6xl mx-auto space-y-4">
-        
         <div class="grid grid-cols-2 gap-3">
           <div class="bg-white p-3 sm:p-4 rounded-lg shadow border-l-4 border-indigo-700">
             <p class="text-[10px] sm:text-xs text-gray-500 uppercase font-semibold">Operaciones</p>
@@ -187,8 +185,6 @@
         </div>
 
         <div class="bg-white rounded-lg shadow overflow-hidden">
-          
-          <!-- Móvil -->
           <div class="block md:hidden divide-y divide-gray-200">
             <template x-for="r in remesasOrdenadas" :key="r.id">
               <div class="p-3.5 space-y-2 transition-colors border-l-4" :class="obtenerColorFila(r.tipo_operacion)">
@@ -208,7 +204,6 @@
             </template>
           </div>
 
-          <!-- Escritorio -->
           <div class="hidden md:block overflow-x-auto w-full">
             <table class="w-full text-left border-collapse min-w-[700px]">
               <thead class="bg-gray-50 border-b text-xs text-gray-500 uppercase">
@@ -245,12 +240,71 @@
         </div>
       </div>
 
-      <!-- VISTA GENÉRICA -->
-      <div x-show="tablaActiva !== 'registros'" x-cloak class="max-w-full mx-auto">
+      <!-- VISTA: VISTA PARES DEDICADA -->
+      <div x-show="tablaActiva === 'vista_pares'" x-cloak class="max-w-full mx-auto space-y-4">
         <div class="bg-white rounded-lg shadow overflow-hidden">
           <div class="p-4 border-b border-gray-100 flex justify-between items-center bg-gray-50">
             <h2 class="font-bold text-gray-700 capitalize flex items-center gap-2">
-              <svg class="w-5 h-5 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4"></path></svg>
+              <svg class="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7.5 21L3 16.5m0 0L7.5 12M3 16.5h13.5m0-13.5L21 7.5m0 0L16.5 12M21 7.5H7.5" /></svg>
+              Tabla Consolidada: <span class="text-indigo-900">Vista Pares</span>
+            </h2>
+            <span class="text-xs text-indigo-700 font-mono bg-indigo-50 border border-indigo-200 px-2.5 py-1 rounded-full font-bold" x-text="datosPares.length + ' Conciliaciones'"></span>
+          </div>
+
+          <div class="overflow-x-auto w-full">
+            <table class="w-full text-left border-collapse whitespace-nowrap">
+              <thead class="bg-indigo-900 text-white text-xs uppercase tracking-wider">
+                <tr>
+                  <th class="p-3 font-semibold">ID Par</th>
+                  <th class="p-3 font-semibold">Hashes</th>
+                  <th class="p-3 font-semibold">Asesor</th>
+                  <th class="p-3 font-semibold">Par Monedas</th>
+                  <th class="p-3 font-semibold">Monto Depósito</th>
+                  <th class="p-3 font-semibold">Monto Transferencia</th>
+                  <th class="p-3 font-semibold">Tasa / Factor</th>
+                  <th class="p-3 font-semibold">Monto Esperado</th>
+                  <th class="p-3 font-semibold">Margen Error</th>
+                  <th class="p-3 font-semibold">Fecha Proceso</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-gray-200 text-sm bg-white">
+                <template x-for="par in datosPares" :key="par.id || par.remesa_id">
+                  <tr class="hover:bg-indigo-50/50 transition-colors">
+                    <td class="p-3 font-mono text-xs font-bold text-indigo-900 bg-indigo-50/30" x-text="par.remesa_id || par.id_a_id_b"></td>
+                    <td class="p-3 font-mono text-xs text-gray-600" x-text="par.remesa_hash || par.hash_a_hash_b"></td>
+                    <td class="p-3 font-semibold text-gray-800" x-text="par.remesa_asesor || par.asesor"></td>
+                    <td class="p-3">
+                      <span class="px-2 py-0.5 text-xs font-bold rounded bg-blue-100 text-blue-900 border border-blue-200" x-text="par.remesa_monedas || par.remesa"></span>
+                    </td>
+                    <td class="p-3 font-bold text-emerald-700" x-text="Number(par.remesa_deposito || par.deposito || 0).toLocaleString('en-US', {minimumFractionDigits: 2})"></td>
+                    <td class="p-3 font-bold text-rose-700" x-text="Number(par.remesa_transferencia || par.transferencia || 0).toLocaleString('en-US', {minimumFractionDigits: 2})"></td>
+                    <td class="p-3 font-mono text-xs text-gray-700">
+                      <span class="font-bold text-indigo-800" x-text="par.remesa_tasa_numero || par.tasa_numero"></span>
+                      <span class="text-gray-400">@</span>
+                      <span x-text="par.remesa_tasa_factor || par.tasa_factor"></span>
+                    </td>
+                    <td class="p-3 font-semibold text-gray-900" x-text="Number(par.remesa_monto_esperado || par.monto_esperado || 0).toLocaleString('en-US', {minimumFractionDigits: 2})"></td>
+                    <td class="p-3">
+                      <span class="px-2 py-0.5 text-xs font-bold rounded" :class="Number(par.remesa_error_margen || par.error_margen || 0) === 0 ? 'bg-emerald-100 text-emerald-800 border border-emerald-300' : 'bg-amber-100 text-amber-800 border border-amber-300'" x-text="(Number(par.remesa_error_margen || par.error_margen || 0) * 100).toFixed(2) + '%'"></span>
+                    </td>
+                    <td class="p-3 text-xs text-gray-500 font-mono" x-text="par.remesa_fecha_procesa || par.fecha_proceso || '-'"></td>
+                  </tr>
+                </template>
+                <tr x-show="datosPares.length === 0">
+                  <td colspan="10" class="p-8 text-center text-gray-400 italic bg-gray-50">No hay remesas conciliadas en la tabla vista_pares.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- VISTA GENÉRICA -->
+      <div x-show="tablaActiva !== 'registros' && tablaActiva !== 'vista_pares'" x-cloak class="max-w-full mx-auto">
+        <div class="bg-white rounded-lg shadow overflow-hidden">
+          <div class="p-4 border-b border-gray-100 flex justify-between items-center bg-gray-50">
+            <h2 class="font-bold text-gray-700 capitalize flex items-center gap-2">
+              <svg class="w-5 h-5 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s-8-1.79-8-4"></path></svg>
               Tabla: <span x-text="tablaActiva"></span>
             </h2>
             <span class="text-xs text-gray-500 font-mono bg-gray-200 px-2 py-1 rounded">Últimos 100 registros</span>
@@ -292,15 +346,12 @@
       class="rounded-t-2xl sm:rounded-xl p-4 sm:p-6 max-w-md w-full space-y-3.5 shadow-2xl max-h-[92vh] overflow-y-auto transition-colors duration-300"
       :class="obtenerColorModal(formEdit.tipo_operacion)"
     >
-      
       <div class="flex justify-between items-center border-b border-gray-200/50 pb-3 sticky top-0 z-10 backdrop-blur-sm bg-white/30 rounded-lg p-2 -mx-2 -mt-2 shadow-sm">
         <div>
           <h3 class="text-base sm:text-lg font-bold text-gray-800">Remesa #<span x-text="formEdit.id"></span></h3>
           <p class="text-xs text-gray-600 font-mono" x-text="'Hash: ' + (formEdit.hash_corto || 'N/A')"></p>
         </div>
         <div class="flex gap-1.5 items-center">
-          
-          <!-- Botón de Tipo Operación (Depósito / Transferencia) Integrado Arriba -->
           <button 
             type="button" 
             @click="alternarTipoOperacion()"
@@ -359,7 +410,6 @@
         </div>
 
         <div class="grid grid-cols-2 gap-2.5">
-          <!-- TIMESTAMP EDITABLE Y VINCULADO EN TIEMPO REAL -->
           <div>
             <label class="block text-xs font-semibold text-gray-700 mb-1 flex items-center gap-1">
               <span>Timestamp</span>
@@ -403,6 +453,7 @@
         
         tablaActiva: 'registros',
         sidebarAbierto: false,
+        datosPares: [],
         datosGenericos: [], columnasGenericas: [],
 
         modalAbierto: false, verMas: false,
@@ -433,6 +484,14 @@
 
           if (nombre === 'registros') {
             await this.onFiltroPadreChange();
+          } else if (nombre === 'vista_pares') {
+            this.datosPares = [];
+            try {
+              const res = await fetch('/api/tabla/vista_pares');
+              if (res.ok) this.datosPares = await res.json();
+            } catch (e) {
+              console.error('Error al cargar vista_pares:', e);
+            }
           } else {
             this.datosGenericos = [];
             this.columnasGenericas = [];
@@ -458,7 +517,6 @@
           return tipo;
         },
 
-        // Color de la fila en la tabla principal
         obtenerColorFila(tipo) {
           if (!tipo) return 'bg-white hover:bg-gray-50 border-l-transparent';
           const t = String(tipo).toLowerCase().trim();
@@ -467,7 +525,6 @@
           return 'bg-white hover:bg-gray-50 border-l-transparent';
         },
 
-        // Color global de fondo para el Modal Entero
         obtenerColorModal(tipo) {
           if (!tipo) return 'bg-white';
           const t = String(tipo).toLowerCase().trim();
@@ -476,7 +533,6 @@
           return 'bg-white border border-gray-200';
         },
 
-        // Alterna entre Egreso (Transferencia) e Ingreso (Depósito) con 1 clic
         alternarTipoOperacion() {
           const t = String(this.formEdit.tipo_operacion || '').toLowerCase().trim();
           if (t.includes('ingreso') || t.includes('deposito') || t.includes('depósito')) {
@@ -486,20 +542,17 @@
           }
         },
 
-        // RECALCULA LA FECHA VISIBLE EN TIEMPO REAL AL CAMBIAR EL TIMESTAMP
         actualizarFechaHoraDesdeTimestamp() {
           const raw = String(this.formEdit.timestamp || '').trim();
           if (!raw) return;
           let ts = parseInt(raw, 10);
           if (isNaN(ts)) return;
 
-          // Si el timestamp viene en milisegundos
           if (ts > 1e11) ts = Math.floor(ts / 1000);
 
           if (ts > 1000000000) {
             const fecha = new Date(ts * 1000);
-            // Convertir a desfase de Venezuela (UTC-4)
-            const offsetVET = -4 * 60; // minutos
+            const offsetVET = -4 * 60;
             const fechaVET = new Date(fecha.getTime() + (offsetVET + fecha.getTimezoneOffset()) * 60000);
 
             const yyyy = fechaVET.getFullYear();
