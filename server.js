@@ -8,11 +8,12 @@ app.use(express.json({ limit: '10mb' }));
 // Servir archivos estáticos desde la raíz del proyecto
 app.use(express.static(__dirname));
 
+// Conexión a la Base de Datos Macro / General
 const pool = new Pool({
   host: process.env.DB_HOST || 'postgres-db',
   port: Number(process.env.DB_PORT) || 5432,
   user: process.env.DB_USER || 'postgres',
-  password: String(process.env.DB_PASSWORD || ''), // <-- Forzado a String para evitar el crash de SASL
+  password: String(process.env.DB_PASSWORD || ''),
   database: process.env.DB_NAME || 'automatizaciones',
 });
 
@@ -25,13 +26,13 @@ app.get('/', (req, res) => {
 });
 
 // ==========================================
-// MÓDULO TASAS & FACTORES - REMESAS JZ
+// MÓDULO TASAS & FACTORES - REMESAS JZ (ISLADO)
 // ==========================================
 
 async function initTasasJZ() {
   try {
     await pool.query(`
-      CREATE TABLE IF NOT EXISTS mercado_tasas (
+      CREATE TABLE IF NOT EXISTS jz_mercado_tasas (
         id SERIAL PRIMARY KEY,
         id_tasa VARCHAR(20) NOT NULL,
         moneda VARCHAR(10) NOT NULL,
@@ -39,33 +40,33 @@ async function initTasasJZ() {
         timestamp BIGINT NOT NULL,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
-      CREATE TABLE IF NOT EXISTS factores_matriz (
+      CREATE TABLE IF NOT EXISTS jz_factores_matriz (
         moneda_origen VARCHAR(10) NOT NULL,
         moneda_destino VARCHAR(10) NOT NULL,
         factor NUMERIC(6, 4) NOT NULL DEFAULT 0.9000,
         PRIMARY KEY (moneda_origen, moneda_destino)
       );
-      CREATE INDEX IF NOT EXISTS idx_mercado_tasas_id ON mercado_tasas(id_tasa);
+      CREATE INDEX IF NOT EXISTS idx_jz_mercado_tasas_id ON jz_mercado_tasas(id_tasa);
     `);
-    console.log('✅ [Remesas-JZ] Tablas de mercado_tasas y factores_matriz verificadas.');
+    console.log('✅ [Remesas-JZ] Tablas jz_mercado_tasas y jz_factores_matriz verificadas.');
   } catch (err) {
-    console.error('❌ Error inicializando tablas de tasas:', err.message);
+    console.error('❌ Error inicializando tablas de tasas JZ:', err.message);
   }
 }
 initTasasJZ();
 
-// 1. Lectura de tasa activa en producción
+// 1. Lectura de tasa activa en producción (Aislada para JZ)
 app.get('/api/tasas/ultimas', async (req, res) => {
   try {
     const lastLot = await pool.query(
-      `SELECT id_tasa FROM mercado_tasas WHERE id_tasa != 'BORRADOR' ORDER BY timestamp DESC, id DESC LIMIT 1;`
+      `SELECT id_tasa FROM jz_mercado_tasas WHERE id_tasa != 'BORRADOR' ORDER BY timestamp DESC, id DESC LIMIT 1;`
     );
     if (lastLot.rows.length === 0) {
       return res.json({ success: true, id_tasa: 'T001', tasas: { USD: 1.0, USDT: 1.0 } });
     }
     
     const idTasa = lastLot.rows[0].id_tasa;
-    const rates = await pool.query(`SELECT moneda, tasa_base FROM mercado_tasas WHERE id_tasa = $1;`, [idTasa]);
+    const rates = await pool.query(`SELECT moneda, tasa_base FROM jz_mercado_tasas WHERE id_tasa = $1;`, [idTasa]);
     const tasasObj = { USD: 1.0, USDT: 1.0 };
     rates.rows.forEach(r => { tasasObj[r.moneda.toUpperCase()] = parseFloat(r.tasa_base); });
     res.json({ success: true, id_tasa: idTasa, tasas: tasasObj });
@@ -83,19 +84,19 @@ app.post('/api/tasas/n8n-webhook', async (req, res) => {
     const timestamp = Math.floor(Date.now() / 1000);
 
     await client.query('BEGIN');
-    await client.query("DELETE FROM mercado_tasas WHERE id_tasa = 'BORRADOR';");
+    await client.query("DELETE FROM jz_mercado_tasas WHERE id_tasa = 'BORRADOR';");
     
     for (const [moneda, valor] of Object.entries(rates)) {
       const numValor = parseFloat(valor);
       if (!isNaN(numValor)) {
         await client.query(
-          `INSERT INTO mercado_tasas (id_tasa, moneda, tasa_base, timestamp) VALUES ('BORRADOR', $1, $2, $3);`, 
+          `INSERT INTO jz_mercado_tasas (id_tasa, moneda, tasa_base, timestamp) VALUES ('BORRADOR', $1, $2, $3);`, 
           [moneda.toUpperCase(), numValor, timestamp]
         );
       }
     }
     await client.query('COMMIT');
-    res.json({ success: true, message: 'Borrador cargado en PostgreSQL.' });
+    res.json({ success: true, message: 'Borrador cargado en jz_mercado_tasas.' });
   } catch (err) {
     await client.query('ROLLBACK');
     res.status(500).json({ success: false, error: err.message });
@@ -107,7 +108,7 @@ app.post('/api/tasas/n8n-webhook', async (req, res) => {
 // 3. Obtener borrador pendiente
 app.get('/api/tasas/fetch-hoo', async (req, res) => {
   try {
-    const rates = await pool.query(`SELECT moneda, tasa_base FROM mercado_tasas WHERE id_tasa = 'BORRADOR';`);
+    const rates = await pool.query(`SELECT moneda, tasa_base FROM jz_mercado_tasas WHERE id_tasa = 'BORRADOR';`);
     if (rates.rows.length === 0) return res.status(404).json({ success: false, msg: 'Sin borrador pendiente.' });
     const ratesObj = {};
     rates.rows.forEach(r => { ratesObj[r.moneda.toUpperCase()] = parseFloat(r.tasa_base); });
@@ -126,7 +127,7 @@ app.post('/api/tasas/publicar', async (req, res) => {
 
     await client.query('BEGIN');
     const lastLot = await client.query(
-      `SELECT id_tasa FROM mercado_tasas WHERE id_tasa != 'BORRADOR' ORDER BY id DESC LIMIT 1;`
+      `SELECT id_tasa FROM jz_mercado_tasas WHERE id_tasa != 'BORRADOR' ORDER BY id DESC LIMIT 1;`
     );
     
     let num = 1;
@@ -138,14 +139,14 @@ app.post('/api/tasas/publicar', async (req, res) => {
 
     for (const [moneda, valor] of Object.entries(tasas)) {
       await client.query(
-        `INSERT INTO mercado_tasas (id_tasa, moneda, tasa_base, timestamp) VALUES ($1, $2, $3, $4);`, 
+        `INSERT INTO jz_mercado_tasas (id_tasa, moneda, tasa_base, timestamp) VALUES ($1, $2, $3, $4);`, 
         [idTasaOficial, moneda.toUpperCase(), parseFloat(valor), timestamp]
       );
     }
-    await client.query("DELETE FROM mercado_tasas WHERE id_tasa = 'BORRADOR';");
+    await client.query("DELETE FROM jz_mercado_tasas WHERE id_tasa = 'BORRADOR';");
     await client.query('COMMIT');
 
-    res.json({ success: true, message: `Lote ${idTasaOficial} publicado con éxito.` });
+    res.json({ success: true, message: `Lote ${idTasaOficial} publicado con éxito para JZ.` });
   } catch (err) {
     await client.query('ROLLBACK');
     res.status(500).json({ success: false, error: err.message });
@@ -154,10 +155,10 @@ app.post('/api/tasas/publicar', async (req, res) => {
   }
 });
 
-// 5. Matriz de factores / comisiones
+// 5. Matriz de factores / comisiones (JZ)
 app.get('/api/tasas/factores', async (req, res) => {
   try {
-    const resBD = await pool.query('SELECT moneda_origen, moneda_destino, factor FROM factores_matriz;');
+    const resBD = await pool.query('SELECT moneda_origen, moneda_destino, factor FROM jz_factores_matriz;');
     const matriz = {};
     resBD.rows.forEach(r => {
       if (!matriz[r.moneda_origen]) matriz[r.moneda_origen] = {};
@@ -180,13 +181,13 @@ app.post('/api/tasas/factores', async (req, res) => {
     await client.query('BEGIN');
     for (const [destino, val] of Object.entries(factores)) {
       await client.query(`
-        INSERT INTO factores_matriz (moneda_origen, moneda_destino, factor) VALUES ($1, $2, $3)
+        INSERT INTO jz_factores_matriz (moneda_origen, moneda_destino, factor) VALUES ($1, $2, $3)
         ON CONFLICT (moneda_origen, moneda_destino) DO UPDATE SET factor = EXCLUDED.factor;
       `, [moneda_origen.toUpperCase(), destino.toUpperCase(), parseFloat(val)]);
     }
     await client.query('COMMIT');
 
-    res.json({ success: true, message: 'Factores actualizados.' });
+    res.json({ success: true, message: 'Comisiones de JZ actualizadas.' });
   } catch (err) {
     await client.query('ROLLBACK');
     res.status(500).json({ success: false, error: err.message });
@@ -315,7 +316,8 @@ app.get('/api/tabla/:nombre', async (req, res) => {
     'comprobantes_test', 
     'cola_recepcion', 
     'vista_pares', 
-    'mercado_tasas', 
+    'jz_mercado_tasas', 
+    'jz_factores_matriz',
     't_nombres'
   ];
   const tabla = req.params.nombre;
