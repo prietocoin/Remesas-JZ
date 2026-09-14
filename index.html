@@ -104,10 +104,10 @@
               <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
             </button>
             <div>
-              <h1 class="text-base sm:text-xl font-bold tracking-wide leading-tight capitalize" x-text="tablaActiva === 'registros' ? 'Visor de Remesas' : tablaActiva.replace('_', ' ')"></h1>
+              <h1 class="text-base sm:text-xl font-bold tracking-wide leading-tight capitalize" x-text="tablaActiva === 'registros' ? 'Visor de Remesas' : (tablaActiva === 'tasas_mercado' ? 'Gestión de Tasas Mercado' : tablaActiva.replace('_', ' '))"></h1>
             </div>
           </div>
-          <span class="text-xs bg-zorrilla-dark px-2.5 py-1 rounded-full text-blue-200 border border-zorrilla font-medium shrink-0" x-text="tablaActiva === 'registros' ? remesas.length + ' regs' : (tablaActiva === 'vista_pares' ? datosPares.length + ' pares' : datosGenericos.length + ' regs')"></span>
+          <span class="text-xs bg-zorrilla-dark px-2.5 py-1 rounded-full text-blue-200 border border-zorrilla font-medium shrink-0" x-text="tablaActiva === 'registros' ? remesas.length + ' regs' : (tablaActiva === 'vista_pares' ? datosPares.length + ' pares' : (tablaActiva === 'tasas_mercado' ? 'Motor Activo' : datosGenericos.length + ' regs'))"></span>
         </div>
         
         <div x-show="tablaActiva === 'registros'" class="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs sm:text-sm">
@@ -258,7 +258,6 @@
                   <th class="p-3 font-semibold">Titular Recibe</th>
                   <th class="p-3 font-semibold">Par Divisas</th>
                   
-                  <!-- Columnas del Desglose -->
                   <th class="p-3 font-semibold bg-indigo-950">Monto Depositado</th>
                   <th class="p-3 font-semibold bg-indigo-950">Monto Remesa (Bruto)</th>
                   <th class="p-3 font-semibold bg-indigo-950">Comisión (3%)</th>
@@ -284,7 +283,6 @@
                       <span class="px-2 py-0.5 text-xs font-bold rounded bg-blue-100 text-blue-900 border border-blue-200" x-text="par.remesa_monedas || par.remesa"></span>
                     </td>
 
-                    <!-- Celdas del Desglose de Remesa -->
                     <td class="p-3 font-bold text-emerald-700 bg-emerald-50/20" x-text="Number(par.remesa_deposito || par.deposito || 0).toLocaleString('en-US', {minimumFractionDigits: 2})"></td>
                     <td class="p-3 font-bold text-gray-900 bg-indigo-50/20" x-text="Number(par.remesa_monto_bruto || par.remesa_deposito || 0).toLocaleString('en-US', {minimumFractionDigits: 2})"></td>
                     <td class="p-3 font-semibold text-amber-700 bg-amber-50/20" x-text="Number(par.remesa_comision || (par.remesa_deposito ? par.remesa_deposito * 0.03 : 0)).toLocaleString('en-US', {minimumFractionDigits: 2})"></td>
@@ -315,8 +313,87 @@
         </div>
       </div>
 
+      <!-- VISTA ESPECIALIZADA: TASAS MERCADO & FACTORES -->
+      <div x-show="tablaActiva === 'tasas_mercado'" x-cloak class="max-w-6xl mx-auto space-y-6">
+        
+        <div class="flex justify-between items-center bg-white p-4 rounded-lg shadow border border-gray-200">
+          <div>
+            <h2 class="text-base font-bold text-gray-800">Motor Cambiario de Remesas</h2>
+            <p class="text-xs text-gray-500">Administración de Lotes Oficiales y Márgenes de Ganancia</p>
+          </div>
+          <button @click="cargarBorrador()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs px-4 py-2 rounded-lg shadow transition">
+            🔄 Traer Borrador n8n
+          </button>
+        </div>
+
+        <!-- BLOQUE: PRODUCCIÓN VS BORRADOR -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <!-- Lote Activo -->
+          <div class="bg-white border border-gray-200 rounded-lg p-5 space-y-4 shadow">
+            <div class="flex justify-between items-center border-b border-gray-100 pb-3">
+              <h3 class="text-xs font-bold text-emerald-600 uppercase tracking-wider">Lote Activo Producción</h3>
+              <span class="text-xs font-extrabold bg-emerald-100 text-emerald-800 px-3 py-1 rounded-full border border-emerald-300" x-text="'Lote: ' + idTasaActiva"></span>
+            </div>
+            <div class="grid grid-cols-3 gap-3">
+              <template x-for="(valor, moneda) in tasasActivas" :key="moneda">
+                <div class="bg-gray-50 border border-gray-200 p-2.5 rounded-lg">
+                  <span class="text-[10px] text-indigo-600 font-bold block" x-text="moneda"></span>
+                  <span class="text-sm font-bold text-gray-800" x-text="Number(valor).toLocaleString('es-ES', { minimumFractionDigits: 2 })"></span>
+                </div>
+              </template>
+            </div>
+          </div>
+
+          <!-- Borrador Pendiente -->
+          <div class="bg-white border border-gray-200 rounded-lg p-5 space-y-4 shadow">
+            <div class="flex justify-between items-center border-b border-gray-100 pb-3">
+              <h3 class="text-xs font-bold text-amber-600 uppercase tracking-wider">Borrador Pendiente</h3>
+              <span class="text-[10px] text-gray-400">Edición manual previa a publicación</span>
+            </div>
+            <div class="grid grid-cols-3 gap-3">
+              <template x-for="(valor, moneda) in borradorTasas" :key="moneda">
+                <div class="bg-amber-50/50 border border-amber-200 p-2.5 rounded-lg">
+                  <span class="text-[10px] text-amber-800 font-bold block" x-text="moneda"></span>
+                  <input type="number" step="any" x-model.number="borradorTasas[moneda]" class="w-full bg-white text-gray-900 font-bold text-xs p-1 rounded border border-amber-300 outline-none">
+                </div>
+              </template>
+            </div>
+            <button @click="publicarTasa()" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs py-2.5 rounded-lg transition shadow">
+              🚀 Publicar como Lote Oficial
+            </button>
+          </div>
+        </div>
+
+        <!-- BLOQUE: MATRIZ DE FACTORES -->
+        <div class="bg-white border border-gray-200 rounded-lg p-5 space-y-4 shadow">
+          <div class="flex justify-between items-center border-b border-gray-100 pb-3">
+            <h3 class="text-xs font-bold text-indigo-900 uppercase tracking-wider">Matriz de Margen / Factor de Ganancia</h3>
+            <select x-model="origenMatriz" class="bg-gray-50 border border-indigo-300 rounded px-3 py-1 text-xs text-indigo-900 font-bold outline-none">
+              <template x-for="m in monedasMatriz" :key="m">
+                <option :value="m" x-text="m"></option>
+              </template>
+            </select>
+          </div>
+          <div class="grid grid-cols-2 md:grid-cols-5 gap-3">
+            <template x-for="dest in monedasMatriz.filter(m => m !== origenMatriz)" :key="dest">
+              <div class="bg-indigo-50/40 border border-indigo-100 p-2.5 rounded-lg">
+                <span class="text-[10px] text-indigo-700 font-bold block" x-text="origenMatriz + ' ➔ ' + dest"></span>
+                <input type="number" step="0.001" 
+                       :value="(factoresMatriz[origenMatriz] && factoresMatriz[origenMatriz][dest]) ? factoresMatriz[origenMatriz][dest] : 0.90" 
+                       @input="actualizarFactor(dest, $event.target.value)"
+                       class="w-full bg-white text-emerald-700 font-bold text-xs p-1 rounded border border-indigo-200 mt-1 outline-none">
+              </div>
+            </template>
+          </div>
+          <button @click="guardarFactores()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs px-5 py-2 rounded-lg transition shadow">
+            💾 Guardar Matriz de Factores
+          </button>
+        </div>
+
+      </div>
+
       <!-- VISTA GENÉRICA -->
-      <div x-show="tablaActiva !== 'registros' && tablaActiva !== 'vista_pares'" x-cloak class="max-w-full mx-auto">
+      <div x-show="tablaActiva !== 'registros' && tablaActiva !== 'vista_pares' && tablaActiva !== 'tasas_mercado'" x-cloak class="max-w-full mx-auto">
         <div class="bg-white rounded-lg shadow overflow-hidden">
           <div class="p-4 border-b border-gray-100 flex justify-between items-center bg-gray-50">
             <h2 class="font-bold text-gray-700 capitalize flex items-center gap-2">
@@ -472,6 +549,13 @@
         datosPares: [],
         datosGenericos: [], columnasGenericas: [],
 
+        // Módulo Tasas & Factores
+        tasasActivas: {}, idTasaActiva: 'T000',
+        borradorTasas: {},
+        factoresMatriz: {},
+        origenMatriz: 'PEN',
+        monedasMatriz: ['VES', 'PEN', 'COP', 'CLP', 'MXN', 'USD', 'EUR', 'ARS', 'PYG', 'USDT'],
+
         modalAbierto: false, verMas: false,
         sortCol: 'id', sortAsc: false,
         formEdit: { id: null, monto: 0, estado: '', titular: '', moneda: '', tasa: '', banco: '', fecha_hora: '', timestamp: '', hiperlink: '', hash_corto: '', tipo_operacion: '' },
@@ -508,6 +592,9 @@
             } catch (e) {
               console.error('Error al cargar vista_pares:', e);
             }
+          } else if (nombre === 'tasas_mercado') {
+            await this.cargarTasasActivas();
+            await this.cargarFactores();
           } else {
             this.datosGenericos = [];
             this.columnasGenericas = [];
@@ -523,6 +610,71 @@
               console.error('Error:', e);
             }
           }
+        },
+
+        // Métodos de Tasas y Factores
+        async cargarTasasActivas() {
+          try {
+            const res = await fetch('/api/tasas/ultimas');
+            const data = await res.json();
+            if (data.success) {
+              this.idTasaActiva = data.id_tasa || 'T001';
+              this.tasasActivas = data.tasas || {};
+            }
+          } catch (e) { console.error('Error cargando tasas activas:', e); }
+        },
+
+        async cargarBorrador() {
+          try {
+            const res = await fetch('/api/tasas/fetch-hoo');
+            const data = await res.json();
+            if (!data.success) return alert(data.msg || 'Sin borrador pendiente en BD.');
+            this.borradorTasas = data.rates || {};
+          } catch (e) { alert('Error al consultar borrador.'); }
+        },
+
+        async publicarTasa() {
+          if (Object.keys(this.borradorTasas).length === 0) return alert('No hay borrador que publicar.');
+          if (!confirm('¿Deseas publicar este lote como official?')) return;
+          try {
+            const res = await fetch('/api/tasas/publicar', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ tasas: this.borradorTasas })
+            });
+            const data = await res.json();
+            alert(data.message);
+            this.borradorTasas = {};
+            await this.cargarTasasActivas();
+          } catch (e) { alert('Error al publicar lote de tasas.'); }
+        },
+
+        async cargarFactores() {
+          try {
+            const res = await fetch('/api/tasas/factores');
+            const data = await res.json();
+            if (data.success) this.factoresMatriz = data.factores || {};
+          } catch (e) { console.error('Error cargando factores:', e); }
+        },
+
+        actualizarFactor(dest, val) {
+          if (!this.factoresMatriz[this.origenMatriz]) this.factoresMatriz[this.origenMatriz] = {};
+          this.factoresMatriz[this.origenMatriz][dest] = parseFloat(val);
+        },
+
+        async guardarFactores() {
+          try {
+            const res = await fetch('/api/tasas/factores', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                moneda_origen: this.origenMatriz,
+                factores: this.factoresMatriz[this.origenMatriz] || {}
+              })
+            });
+            const data = await res.json();
+            alert(data.message);
+          } catch (e) { alert('Error al guardar matriz de factores.'); }
         },
 
         traducirTipo(tipo) {
