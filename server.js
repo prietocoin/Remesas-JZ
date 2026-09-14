@@ -1,324 +1,1070 @@
-const express = require('express');
-const { Pool } = require('pg');
-const path = require('path');
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Visor de Remesas | J. Zorrilla</title>
+  
+  <link rel="icon" type="image/png" href="/logo.png">
 
-const app = express();
-app.use(express.json());
-
-// Seguridad: Evitar servir el directorio raíz completo (proteger server.js)
-app.use(express.static(path.join(__dirname, 'public')));
-
-const pool = new Pool({
-  host: process.env.DB_HOST || 'postgres-db', // <-- Host actualizado al contenedor general
-  port: process.env.DB_PORT || 5432,
-  user: process.env.DB_USER || 'postgres',
-  password: process.env.DB_PASSWORD,
-  database: process.env.DB_NAME || 'automatizaciones',
-});
-app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, 'index.html'));
-});
-
-// ==========================================
-// MÓDULO TASAS & FACTORES - REMESAS JZ
-// ==========================================
-
-async function initTasasJZ() {
-  try {
-    await pool.query(`
-      CREATE TABLE IF NOT EXISTS mercado_tasas (
-        id SERIAL PRIMARY KEY,
-        id_tasa VARCHAR(20) NOT NULL,
-        moneda VARCHAR(10) NOT NULL,
-        tasa_base NUMERIC(18, 6) NOT NULL,
-        timestamp BIGINT NOT NULL,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      );
-      CREATE TABLE IF NOT EXISTS factores_matriz (
-        moneda_origen VARCHAR(10) NOT NULL,
-        moneda_destino VARCHAR(10) NOT NULL,
-        factor NUMERIC(6, 4) NOT NULL DEFAULT 0.9000,
-        PRIMARY KEY (moneda_origen, moneda_destino)
-      );
-      CREATE INDEX IF NOT EXISTS idx_mercado_tasas_id ON mercado_tasas(id_tasa);
-    `);
-    console.log('✅ [Remesas-JZ] Tablas de mercado_tasas y factores_matriz listas.');
-  } catch (err) {
-    console.error('❌ Error inicializando tablas de tasas:', err.message);
-  }
-}
-initTasasJZ();
-
-// 1. Lectura de tasa activa en producción
-app.get('/api/tasas/ultimas', async (req, res) => {
-  try {
-    const lastLot = await pool.query(
-      `SELECT id_tasa FROM mercado_tasas WHERE id_tasa != 'BORRADOR' ORDER BY timestamp DESC, id DESC LIMIT 1;`
-    );
-    if (lastLot.rows.length === 0) {
-      return res.json({ success: true, id_tasa: 'T001', tasas: { USD: 1.0, USDT: 1.0 } });
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+  <style>
+    [x-cloak] { display: none !important; }
+    html, body {
+      touch-action: manipulation;
+      -webkit-overflow-scrolling: touch;
     }
-    
-    const idTasa = lastLot.rows[0].id_tasa;
-    const rates = await pool.query(`SELECT moneda, tasa_base FROM mercado_tasas WHERE id_tasa = $1;`, [idTasa]);
-    const tasasObj = { USD: 1.0, USDT: 1.0 };
-    rates.rows.forEach(r => { tasasObj[r.moneda.toUpperCase()] = parseFloat(r.tasa_base); });
-    res.json({ success: true, id_tasa: idTasa, tasas: tasasObj });
-  } catch (err) { 
-    res.status(500).json({ success: false, error: err.message }); 
-  }
-});
+    .bg-zorrilla { background-color: #2e3192; }
+    .bg-zorrilla-dark { background-color: #1f2268; }
+    .border-zorrilla { border-color: #4347bd; }
 
-// 2. Recepción de Webhook desde n8n (Transaccional)
-app.post('/api/tasas/n8n-webhook', async (req, res) => {
-  const client = await pool.connect();
-  try {
-    let payload = Array.isArray(req.body) ? req.body[0] : req.body;
-    let rates = (payload && (payload.rates || payload.json || payload)) || {};
-    const timestamp = Math.floor(Date.now() / 1000);
+    @keyframes logoPulse {
+      0%, 100% { transform: scale(1); opacity: 0.95; }
+      50% { transform: scale(1.06); opacity: 1; filter: drop-shadow(0 0 15px rgba(255, 255, 255, 0.3)); }
+    }
+    .animate-logo-pulse {
+      animation: logoPulse 2s infinite ease-in-out;
+    }
+  </style>
+</head>
+<body class="bg-gray-100 font-sans text-gray-900 h-screen overflow-hidden flex" x-data="dashboardApp()" x-init="init()">
 
-    await client.query('BEGIN');
-    await client.query("DELETE FROM mercado_tasas WHERE id_tasa = 'BORRADOR';");
+  <!-- Preloader -->
+  <div id="preloader" class="fixed inset-0 bg-zorrilla z-[100] flex flex-col items-center justify-center p-4 transition-all duration-700 opacity-100">
+    <div class="flex flex-col items-center max-w-xs text-center space-y-4">
+      <div class="relative flex items-center justify-center">
+        <div class="absolute inset-0 rounded-full bg-white/10 blur-xl animate-pulse"></div>
+        <img src="/logo.png" alt="Logo J. Zorrilla" class="w-36 h-36 object-contain relative z-10 animate-logo-pulse">
+      </div>
+      <div class="space-y-1">
+        <h2 class="text-white text-lg font-bold tracking-wider uppercase">J. ZORRILLA</h2>
+        <p class="text-blue-200 text-xs font-semibold tracking-wide">Cambios y Remesas Internacionales</p>
+      </div>
+      <div class="w-48 bg-zorrilla-dark rounded-full h-1.5 overflow-hidden border border-white/20 mt-2">
+        <div class="bg-gradient-to-r from-orange-500 to-amber-400 h-full w-full animate-pulse"></div>
+      </div>
+      <span class="text-[10px] text-blue-200 tracking-widest font-mono">INICIALIZANDO SISTEMA...</span>
+    </div>
+  </div>
+
+  <div x-show="sidebarAbierto" x-transition.opacity class="fixed inset-0 bg-black/60 z-40 md:hidden" @click="sidebarAbierto = false" x-cloak></div>
+
+  <!-- Sidebar -->
+  <aside :class="sidebarAbierto ? 'translate-x-0' : '-translate-x-full'" class="fixed md:static inset-y-0 left-0 z-50 w-64 bg-zorrilla-dark text-white flex flex-col transition-transform duration-300 md:translate-x-0 shadow-2xl md:shadow-none">
+    <div class="p-4 flex items-center gap-3 border-b border-white/10 shrink-0">
+      <div class="bg-white/10 p-1.5 rounded-xl">
+        <img src="/logo.png" alt="Logo" class="w-8 h-8 object-contain">
+      </div>
+      <div>
+        <h2 class="font-bold text-sm tracking-wide leading-tight">J. ZORRILLA</h2>
+        <p class="text-[9px] text-blue-300 uppercase tracking-widest">Dashboard Panel</p>
+      </div>
+    </div>
+    <nav class="flex-1 overflow-y-auto p-3 space-y-2">
+      <p class="px-3 text-[10px] font-bold text-indigo-300 uppercase tracking-wider mb-2 mt-2">Principal</p>
+      <button @click="cambiarTabla('registros')" :class="tablaActiva === 'registros' ? 'bg-indigo-600 text-white shadow' : 'text-blue-200 hover:bg-white/10 hover:text-white'" class="w-full flex items-center gap-3 p-2.5 rounded-lg font-semibold text-sm transition-all">
+        <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8.25 6.75h12M8.25 12h12m-12 5.25h12M3.75 6.75h.007v.008H3.75V6.75zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zM3.75 12h.007v.008H3.75V12zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm-.375 5.25h.007v.008H3.75v-.008zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" /></svg>
+        Visor de Remesas
+      </button>
+
+      <div class="py-2"><hr class="border-white/10"></div>
+      <p class="px-3 text-[10px] font-bold text-indigo-300 uppercase tracking-wider mb-2">Revisión de Bases</p>
+
+      <button @click="cambiarTabla('cola_recepcion')" :class="tablaActiva === 'cola_recepcion' ? 'bg-indigo-600 text-white shadow' : 'text-blue-200 hover:bg-white/10 hover:text-white'" class="w-full flex items-center gap-3 p-2.5 rounded-lg font-semibold text-sm transition-all">
+        <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M2.25 13.5h3.86a2.25 2.25 0 012.012 1.244l.256.512a2.25 2.25 0 002.013 1.244h3.218a2.25 2.25 0 002.013-1.244l.256-.512a2.25 2.25 0 012.013-1.244h3.859m-19.5.338V18a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18v-4.162c0-.224-.034-.447-.1-.661L19.24 5.338a2.25 2.25 0 00-2.15-1.588H6.911a2.25 2.25 0 00-2.15 1.588L2.35 12.839a2.25 2.25 0 00-.1.661z" /></svg>
+        Cola de Recepción
+      </button>
+
+      <button @click="cambiarTabla('vista_pares')" :class="tablaActiva === 'vista_pares' ? 'bg-indigo-600 text-white shadow' : 'text-blue-200 hover:bg-white/10 hover:text-white'" class="w-full flex items-center gap-3 p-2.5 rounded-lg font-semibold text-sm transition-all">
+        <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M7.5 21L3 16.5m0 0L7.5 12M3 16.5h13.5m0-13.5L21 7.5m0 0L16.5 12M21 7.5H7.5" /></svg>
+        Vista Pares
+      </button>
+
+      <button @click="cambiarTabla('tasas_mercado')" :class="tablaActiva === 'tasas_mercado' ? 'bg-indigo-600 text-white shadow' : 'text-blue-200 hover:bg-white/10 hover:text-white'" class="w-full flex items-center gap-3 p-2.5 rounded-lg font-semibold text-sm transition-all">
+        <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z" /></svg>
+        Tasas Mercado
+      </button>
+
+      <button @click="cambiarTabla('imagenes_john')" :class="tablaActiva === 'imagenes_john' ? 'bg-indigo-600 text-white shadow' : 'text-blue-200 hover:bg-white/10 hover:text-white'" class="w-full flex items-center gap-3 p-2.5 rounded-lg font-semibold text-sm transition-all">
+        <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 001.5-1.5V6a1.5 1.5 0 00-1.5-1.5H3.75A1.5 1.5 0 002.25 6v12a1.5 1.5 0 001.5 1.5zm10.5-11.25h.008v.008h-.008V8.25zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" /></svg>
+        Imágenes JOHN
+      </button>
+
+      <button @click="cambiarTabla('t_nombres')" :class="tablaActiva === 't_nombres' ? 'bg-indigo-600 text-white shadow' : 'text-blue-200 hover:bg-white/10 hover:text-white'" class="w-full flex items-center gap-3 p-2.5 rounded-lg font-semibold text-sm transition-all">
+        <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 9h3.75M15 12h3.75M15 15h3.75M4.5 19.5h15a2.25 2.25 0 002.25-2.25V6.75A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25v10.5A2.25 2.25 0 004.5 19.5zm6-10.125a1.875 1.875 0 11-3.75 0 1.875 1.875 0 013.75 0zm1.294 6.336a6.721 6.721 0 01-3.17.789 6.721 6.721 0 01-3.168-.789 3.376 3.376 0 016.338 0z" /></svg>
+        Directorio (Nombres)
+      </button>
+    </nav>
+  </aside>
+
+  <!-- Contenedor Principal -->
+  <div class="flex-1 flex flex-col h-full overflow-hidden relative w-full">
     
-    for (const [moneda, valor] of Object.entries(rates)) {
-      const numValor = parseFloat(valor);
-      if (!isNaN(numValor)) {
-        await client.query(
-          `INSERT INTO mercado_tasas (id_tasa, moneda, tasa_base, timestamp) VALUES ('BORRADOR', $1, $2, $3);`, 
-          [moneda.toUpperCase(), numValor, timestamp]
-        );
+    <header class="bg-zorrilla text-white p-3 sm:p-4 shadow-md z-20 shrink-0">
+      <div class="max-w-6xl mx-auto flex flex-col gap-3">
+        <div class="flex justify-between items-center">
+          <div class="flex items-center gap-3">
+            <button @click="sidebarAbierto = true" class="md:hidden p-1.5 bg-zorrilla-dark rounded-md hover:bg-indigo-600 focus:outline-none transition-colors">
+              <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
+            </button>
+            <div>
+              <h1 class="text-base sm:text-xl font-bold tracking-wide leading-tight capitalize" x-text="tablaActiva === 'registros' ? 'Visor de Remesas' : (tablaActiva === 'tasas_mercado' ? 'Gestión de Tasas Mercado' : (tablaActiva === 'imagenes_john' ? 'Monitor RAW WhatsApp (JOHN)' : tablaActiva.replace('_', ' ')))"></h1>
+            </div>
+          </div>
+          <span class="text-xs bg-zorrilla-dark px-2.5 py-1 rounded-full text-blue-200 border border-zorrilla font-medium shrink-0" x-text="tablaActiva === 'registros' ? remesas.length + ' regs' : (tablaActiva === 'vista_pares' ? datosPares.length + ' pares' : (tablaActiva === 'tasas_mercado' ? 'Motor Activo' : (tablaActiva === 'imagenes_john' ? datosImagenesJohn.length + ' imágenes' : datosGenericos.length + ' regs')))"></span>
+        </div>
+        
+        <div x-show="tablaActiva === 'registros'" class="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs sm:text-sm">
+          <div>
+            <select x-model="asesorSeleccionado" @change="onFiltroPadreChange()" class="bg-zorrilla-dark text-white p-2 rounded border border-zorrilla focus:outline-none w-full text-xs sm:text-sm">
+              <option value="">Todos los Asesores</option>
+              <template x-for="a in asesores" :key="a.nombre_asesor">
+                <option :value="a.nombre_asesor" x-text="a.nombre_asesor"></option>
+              </template>
+            </select>
+          </div>
+
+          <div class="relative" @click.outside="fechaMenuAbierto = false">
+            <button @click="fechaMenuAbierto = !fechaMenuAbierto" type="button" class="bg-zorrilla-dark text-white p-2 rounded border border-zorrilla focus:outline-none w-full text-left flex justify-between items-center text-xs sm:text-sm">
+              <span x-text="obtenerTextoRangoFecha()" class="truncate"></span>
+              <svg class="w-3.5 h-3.5 ml-1 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+            </button>
+
+            <div x-show="fechaMenuAbierto" x-cloak class="absolute left-0 right-0 sm:right-auto mt-1 w-full sm:w-72 bg-white text-gray-800 rounded-lg shadow-2xl p-3 z-50 border border-gray-200 space-y-2.5">
+              <div>
+                <label class="block text-xs font-semibold text-gray-600 mb-1">Desde</label>
+                <input type="date" x-model="fechaInicio" @change="onFiltroPadreChange()" class="w-full border p-2 rounded text-xs focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+              </div>
+              <div>
+                <label class="block text-xs font-semibold text-gray-600 mb-1">Hasta</label>
+                <input type="date" x-model="fechaFin" @change="onFiltroPadreChange()" class="w-full border p-2 rounded text-xs focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+              </div>
+              <div class="flex justify-between items-center pt-2 border-t">
+                <button @click="limpiarFechas()" type="button" class="text-xs text-red-600 hover:underline font-semibold">Limpiar</button>
+                <button @click="fechaMenuAbierto = false" type="button" class="px-3 py-1 bg-zorrilla text-white rounded text-xs font-semibold">Cerrar</button>
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <select x-model="hashSeleccionado" @change="cargarRemesas()" class="bg-zorrilla-dark text-white p-2 rounded border border-zorrilla focus:outline-none w-full text-xs sm:text-sm">
+              <option value="">Todos los Hashes</option>
+              <template x-for="h in hashes" :key="h.hash_corto">
+                <option :value="h.hash_corto" x-text="h.hash_corto"></option>
+              </template>
+            </select>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <main class="flex-1 overflow-x-hidden overflow-y-auto bg-gray-100 p-3 sm:p-4 pb-12 w-full">
+      
+      <!-- VISTA: REGISTROS -->
+      <div x-show="tablaActiva === 'registros'" class="max-w-6xl mx-auto space-y-4">
+        <div class="grid grid-cols-2 gap-3">
+          <div class="bg-white p-3 sm:p-4 rounded-lg shadow border-l-4 border-indigo-700">
+            <p class="text-[10px] sm:text-xs text-gray-500 uppercase font-semibold">Operaciones</p>
+            <p class="text-lg sm:text-2xl font-bold" x-text="remesas.length"></p>
+          </div>
+          <div class="bg-white p-3 sm:p-4 rounded-lg shadow border-l-4 border-green-600">
+            <p class="text-[10px] sm:text-xs text-gray-500 uppercase font-semibold">Acumulado</p>
+            <p class="text-lg sm:text-2xl font-bold" x-text="'$' + calcularTotal()"></p>
+          </div>
+        </div>
+
+        <div class="flex items-center gap-4 text-xs px-1 text-gray-600">
+          <div class="flex items-center gap-1.5">
+            <span class="w-3 h-3 rounded-full bg-emerald-200 border border-emerald-400"></span>
+            <span class="font-semibold">Depósito</span>
+          </div>
+          <div class="flex items-center gap-1.5">
+            <span class="w-3 h-3 rounded-full bg-rose-200 border border-rose-400"></span>
+            <span class="font-semibold">Transferencia</span>
+          </div>
+        </div>
+
+        <div class="bg-white rounded-lg shadow overflow-hidden">
+          <div class="block md:hidden divide-y divide-gray-200">
+            <template x-for="r in remesasOrdenadas" :key="r.id">
+              <div class="p-3.5 space-y-2 transition-colors border-l-4" :class="obtenerColorFila(r.tipo_operacion)">
+                <div class="flex justify-between items-center gap-1">
+                  <span class="font-bold text-xs text-gray-500" x-text="'#' + r.id"></span>
+                  <span class="px-2 py-0.5 text-[10px] uppercase font-bold rounded bg-white shadow-sm border border-gray-200 text-gray-600" x-text="traducirTipo(r.tipo_operacion)"></span>
+                  <button @click="abrirEditar(r)" type="button" class="inline-flex items-center gap-1 bg-white/90 active:bg-gray-100 text-indigo-900 px-2.5 py-1 rounded-md border border-gray-300 text-xs font-mono font-bold shadow-sm">
+                    <span x-text="r.hash_corto || 'Ver detalle'"></span>
+                  </button>
+                  <span class="px-2 py-0.5 text-[11px] rounded font-semibold" :class="r.estado === 'P' || r.estado === 'Pendiente' ? 'bg-yellow-100 text-yellow-800 border border-yellow-300' : 'bg-green-100 text-green-800 border border-green-300'" x-text="r.estado || 'P'"></span>
+                </div>
+                <div class="flex justify-between items-baseline text-sm pt-1">
+                  <span class="text-gray-700 font-medium" x-text="r.nombre_asesor"></span>
+                  <span class="font-bold text-base text-gray-900">$<span x-text="Number(r.monto || 0).toFixed(2)"></span></span>
+                </div>
+              </div>
+            </template>
+          </div>
+
+          <div class="hidden md:block overflow-x-auto w-full">
+            <table class="w-full text-left border-collapse min-w-[700px]">
+              <thead class="bg-gray-50 border-b text-xs text-gray-500 uppercase">
+                <tr>
+                  <th @click="ordenarPor('id')" class="p-3 cursor-pointer hover:bg-gray-100 select-none">ID</th>
+                  <th @click="ordenarPor('nombre_asesor')" class="p-3 cursor-pointer hover:bg-gray-100 select-none">Asesor</th>
+                  <th @click="ordenarPor('tipo_operacion')" class="p-3 cursor-pointer hover:bg-gray-100 select-none">Tipo</th>
+                  <th @click="ordenarPor('hash_corto')" class="p-3 cursor-pointer hover:bg-gray-100 select-none">Hash</th>
+                  <th @click="ordenarPor('monto')" class="p-3 cursor-pointer hover:bg-gray-100 select-none">Monto</th>
+                  <th @click="ordenarPor('estado')" class="p-3 cursor-pointer hover:bg-gray-100 select-none">Estado</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-gray-200 text-sm">
+                <template x-for="r in remesasOrdenadas" :key="r.id">
+                  <tr class="transition-colors border-l-4" :class="obtenerColorFila(r.tipo_operacion)">
+                    <td class="p-3 font-semibold text-gray-500" x-text="'#' + r.id"></td>
+                    <td class="p-3 font-medium text-gray-800" x-text="r.nombre_asesor"></td>
+                    <td class="p-3">
+                      <span class="px-2 py-0.5 text-xs font-bold rounded uppercase bg-white border border-gray-200 text-gray-600 shadow-sm" x-text="traducirTipo(r.tipo_operacion)"></span>
+                    </td>
+                    <td class="p-3">
+                      <button @click="abrirEditar(r)" type="button" class="font-mono text-xs bg-white/90 hover:bg-gray-100 text-indigo-900 px-2.5 py-1 rounded border border-gray-300 font-bold transition-colors inline-flex items-center gap-1.5 shadow-sm">
+                        <span x-text="r.hash_corto || 'Sin Hash'"></span>
+                        <svg class="w-3.5 h-3.5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+                      </button>
+                    </td>
+                    <td class="p-3 font-bold text-gray-900">$<span x-text="Number(r.monto || 0).toFixed(2)"></span></td>
+                    <td class="p-3"><span class="px-2 py-1 text-xs rounded font-semibold" :class="r.estado === 'P' || r.estado === 'Pendiente' ? 'bg-yellow-100 text-yellow-800 border border-yellow-300' : 'bg-green-100 text-green-800 border border-green-300'" x-text="r.estado || 'P'"></span></td>
+                  </tr>
+                </template>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- VISTA: VISTA PARES CON DESGLOSE COMPLETO -->
+      <div x-show="tablaActiva === 'vista_pares'" x-cloak class="max-w-full mx-auto space-y-4">
+        <div class="bg-white rounded-lg shadow overflow-hidden">
+          <div class="p-4 border-b border-gray-100 flex justify-between items-center bg-gray-50">
+            <h2 class="font-bold text-gray-700 capitalize flex items-center gap-2">
+              <svg class="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7.5 21L3 16.5m0 0L7.5 12M3 16.5h13.5m0-13.5L21 7.5m0 0L16.5 12M21 7.5H7.5" /></svg>
+              Tabla Consolidada: <span class="text-indigo-900">Vista Pares</span>
+            </h2>
+            <span class="text-xs text-indigo-700 font-mono bg-indigo-50 border border-indigo-200 px-2.5 py-1 rounded-full font-bold" x-text="datosPares.length + ' Conciliaciones'"></span>
+          </div>
+
+          <div class="overflow-x-auto w-full">
+            <table class="w-full text-left border-collapse whitespace-nowrap">
+              <thead class="bg-indigo-900 text-white text-xs uppercase tracking-wider">
+                <tr>
+                  <th class="p-3 font-semibold">ID Par</th>
+                  <th class="p-3 font-semibold">Hashes</th>
+                  <th class="p-3 font-semibold">Asesor</th>
+                  <th class="p-3 font-semibold">Titular Envía</th>
+                  <th class="p-3 font-semibold">Titular Recibe</th>
+                  <th class="p-3 font-semibold">Par Divisas</th>
+                  
+                  <th class="p-3 font-semibold bg-indigo-950">Monto Depositado</th>
+                  <th class="p-3 font-semibold bg-indigo-950">Monto Remesa (Bruto)</th>
+                  <th class="p-3 font-semibold bg-indigo-950">Comisión (3%)</th>
+                  <th class="p-3 font-semibold bg-indigo-950">Monto Neto</th>
+                  <th class="p-3 font-semibold bg-indigo-950">Estado Comisión</th>
+                  
+                  <th class="p-3 font-semibold">Monto Transferencia</th>
+                  <th class="p-3 font-semibold">Tasa / Factor</th>
+                  <th class="p-3 font-semibold">Monto Esperado</th>
+                  <th class="p-3 font-semibold">Margen Error</th>
+                  <th class="p-3 font-semibold">Fecha Proceso</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-gray-200 text-sm bg-white">
+                <template x-for="par in datosPares" :key="par.id || par.remesa_id">
+                  <tr class="hover:bg-indigo-50/50 transition-colors">
+                    <td class="p-3 font-mono text-xs font-bold text-indigo-900 bg-indigo-50/30" x-text="par.remesa_id || par.id_a_id_b"></td>
+                    <td class="p-3 font-mono text-xs text-gray-600" x-text="par.remesa_hash || par.hash_a_hash_b"></td>
+                    <td class="p-3 font-semibold text-gray-800" x-text="par.remesa_asesor || par.asesor"></td>
+                    <td class="p-3 font-semibold text-xs text-emerald-800 bg-emerald-50/40 rounded" x-text="par.remesa_titular_envia || par.titular_envia || 'N/A'"></td>
+                    <td class="p-3 font-semibold text-xs text-rose-800 bg-rose-50/40 rounded" x-text="par.remesa_titular_recibe || par.titular_recibe || 'N/A'"></td>
+                    <td class="p-3">
+                      <span class="px-2 py-0.5 text-xs font-bold rounded bg-blue-100 text-blue-900 border border-blue-200" x-text="par.remesa_monedas || par.remesa"></span>
+                    </td>
+
+                    <td class="p-3 font-bold text-emerald-700 bg-emerald-50/20" x-text="Number(par.remesa_deposito || par.deposito || 0).toLocaleString('en-US', {minimumFractionDigits: 2})"></td>
+                    <td class="p-3 font-bold text-gray-900 bg-indigo-50/20" x-text="Number(par.remesa_monto_bruto || par.remesa_deposito || 0).toLocaleString('en-US', {minimumFractionDigits: 2})"></td>
+                    <td class="p-3 font-semibold text-amber-700 bg-amber-50/20" x-text="Number(par.remesa_comision || (par.remesa_deposito ? par.remesa_deposito * 0.03 : 0)).toLocaleString('en-US', {minimumFractionDigits: 2})"></td>
+                    <td class="p-3 font-bold text-indigo-800 bg-indigo-50/20" x-text="Number(par.remesa_monto_neto || (par.remesa_deposito ? par.remesa_deposito * 0.97 : 0)).toLocaleString('en-US', {minimumFractionDigits: 2})"></td>
+                    <td class="p-3">
+                      <span class="px-2 py-0.5 text-xs font-bold rounded" :class="(par.remesa_estado_comision || 'PENDIENTE') === 'DESCONTADA' ? 'bg-emerald-100 text-emerald-800 border border-emerald-300' : 'bg-amber-100 text-amber-800 border border-amber-300'" x-text="par.remesa_estado_comision || 'PENDIENTE'"></span>
+                    </td>
+
+                    <td class="p-3 font-bold text-rose-700" x-text="Number(par.remesa_transferencia || par.transferencia || 0).toLocaleString('en-US', {minimumFractionDigits: 2})"></td>
+                    <td class="p-3 font-mono text-xs text-gray-700">
+                      <span class="font-bold text-indigo-800" x-text="par.remesa_tasa_numero || par.tasa_numero"></span>
+                      <span class="text-gray-400">@</span>
+                      <span x-text="par.remesa_tasa_factor || par.tasa_factor"></span>
+                    </td>
+                    <td class="p-3 font-semibold text-gray-900" x-text="Number(par.remesa_monto_esperado || par.monto_esperado || 0).toLocaleString('en-US', {minimumFractionDigits: 2})"></td>
+                    <td class="p-3">
+                      <span class="px-2 py-0.5 text-xs font-bold rounded" :class="Number(par.remesa_error_margen || par.error_margen || 0) === 0 ? 'bg-emerald-100 text-emerald-800 border border-emerald-300' : 'bg-amber-100 text-amber-800 border border-amber-300'" x-text="(Number(par.remesa_error_margen || par.error_margen || 0) * 100).toFixed(2) + '%'"></span>
+                    </td>
+                    <td class="p-3 text-xs text-gray-500 font-mono" x-text="par.remesa_fecha_procesa || par.fecha_proceso || '-'"></td>
+                  </tr>
+                </template>
+                <tr x-show="datosPares.length === 0">
+                  <td colspan="16" class="p-8 text-center text-gray-400 italic bg-gray-50">No hay remesas conciliadas en la tabla vista_pares.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- VISTA ESPECIALIZADA: TASAS MERCADO & COMISIONES (%) -->
+      <div x-show="tablaActiva === 'tasas_mercado'" x-cloak class="max-w-6xl mx-auto space-y-6">
+        
+        <div class="flex justify-between items-center bg-white p-4 rounded-lg shadow border border-gray-200">
+          <div>
+            <h2 class="text-base font-bold text-gray-800">Motor Cambiario de Remesas</h2>
+            <p class="text-xs text-gray-500">Administración de Lotes Oficiales y Comisiones por Divisa</p>
+          </div>
+          <button @click="cargarBorrador()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs px-4 py-2 rounded-lg shadow transition">
+            🔄 Traer Borrador n8n
+          </button>
+        </div>
+
+        <!-- BLOQUE: PRODUCCIÓN VS BORRADOR -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <!-- Lote Activo -->
+          <div class="bg-white border border-gray-200 rounded-lg p-5 space-y-4 shadow">
+            <div class="flex justify-between items-center border-b border-gray-100 pb-3">
+              <h3 class="text-xs font-bold text-emerald-600 uppercase tracking-wider">Lote Activo Producción</h3>
+              <span class="text-xs font-extrabold bg-emerald-100 text-emerald-800 px-3 py-1 rounded-full border border-emerald-300" x-text="'Lote: ' + idTasaActiva"></span>
+            </div>
+            <div class="grid grid-cols-3 gap-3">
+              <template x-for="(valor, moneda) in tasasActivas" :key="moneda">
+                <div class="bg-gray-50 border border-gray-200 p-2.5 rounded-lg">
+                  <span class="text-[10px] text-indigo-600 font-bold block" x-text="formatearNombreMoneda(moneda)"></span>
+                  <span class="text-sm font-bold text-gray-800" x-text="Number(valor).toLocaleString('es-ES', { minimumFractionDigits: 2 })"></span>
+                </div>
+              </template>
+            </div>
+          </div>
+
+          <!-- Borrador Pendiente -->
+          <div class="bg-white border border-gray-200 rounded-lg p-5 space-y-4 shadow">
+            <div class="flex justify-between items-center border-b border-gray-100 pb-3">
+              <h3 class="text-xs font-bold text-amber-600 uppercase tracking-wider">Borrador Pendiente</h3>
+              <span class="text-[10px] text-gray-400">Edición manual previa a publicación</span>
+            </div>
+            <div class="grid grid-cols-3 gap-3">
+              <template x-for="(valor, moneda) in borradorTasas" :key="moneda">
+                <div class="bg-amber-50/50 border border-amber-200 p-2.5 rounded-lg">
+                  <span class="text-[10px] text-amber-800 font-bold block" x-text="formatearNombreMoneda(moneda)"></span>
+                  <input type="number" step="any" x-model.number="borradorTasas[moneda]" class="w-full bg-white text-gray-900 font-bold text-xs p-1 rounded border border-amber-300 outline-none">
+                </div>
+              </template>
+            </div>
+            <button @click="publicarTasa()" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs py-2.5 rounded-lg transition shadow">
+              🚀 Publicar como Lote Oficial
+            </button>
+          </div>
+        </div>
+
+        <!-- BLOQUE: COMISIÓN POR PAR REGISTRADO (%) -->
+        <div class="bg-white border border-gray-200 rounded-lg p-5 space-y-4 shadow">
+          <div class="flex justify-between items-center border-b border-gray-100 pb-3">
+            <div>
+              <h3 class="text-xs font-bold text-indigo-900 uppercase tracking-wider">Comisión por Par (%)</h3>
+              <p class="text-[10px] text-gray-400">Pares oficiales configurados para J. Zorrilla</p>
+            </div>
+            <button @click="abrirModalNuevoPar()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs px-3 py-1.5 rounded-lg shadow transition flex items-center gap-1">
+              <span>+ Agregar Par</span>
+            </button>
+          </div>
+
+          <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
+            <template x-for="p in paresJZ" :key="p.key">
+              <div class="bg-indigo-50/40 border border-indigo-100 p-2.5 rounded-lg">
+                <span class="text-[10px] text-indigo-700 font-bold block" x-text="p.label"></span>
+                <div class="relative mt-1">
+                  <input type="number" step="0.1" min="0" max="100" 
+                         :value="obtenerComisionPar(p.orig, p.dest)" 
+                         @input="actualizarComisionPar(p.orig, p.dest, $event.target.value)"
+                         class="w-full bg-white text-emerald-700 font-bold text-xs p-1.5 pr-6 rounded border border-indigo-200 outline-none">
+                  <span class="absolute right-2 top-1.5 text-xs text-gray-400 font-bold">%</span>
+                </div>
+              </div>
+            </template>
+          </div>
+
+          <button @click="guardarTodasLasComisiones()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs px-5 py-2.5 rounded-lg transition shadow">
+            💾 Guardar Todas las Comisiones
+          </button>
+        </div>
+
+      </div>
+
+      <!-- VISTA ESPECIALIZADA: MONITOR RAW IMÁGENES JOHN (COSMÉTICA J. ZORRILLA) -->
+      <div x-show="tablaActiva === 'imagenes_john'" x-cloak class="max-w-6xl mx-auto space-y-4">
+        
+        <div class="flex justify-between items-center bg-white p-4 rounded-lg shadow border border-gray-200">
+          <div>
+            <h2 class="text-base font-bold text-gray-800 flex items-center gap-2">
+              <span class="text-lg">📱</span> Monitor RAW WhatsApp — <span class="text-indigo-900 font-extrabold">JOHN</span>
+            </h2>
+            <p class="text-xs text-gray-500">Filtrado inteligente de capturas y comprobantes crudos en PostgreSQL</p>
+          </div>
+          <div class="flex gap-2 items-center">
+            <span class="text-xs bg-indigo-50 text-indigo-800 border border-indigo-200 px-3 py-1 rounded-full font-bold" x-text="datosImagenesJohn.length + ' Comprobantes'"></span>
+            <button @click="cargarImagenesJohn()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs px-3 py-1.5 rounded-lg shadow transition">
+              🔄 Refrescar
+            </button>
+          </div>
+        </div>
+
+        <!-- GRID DE TARJETAS CON LA ESTÉTICA OFICIAL DE J. ZORRILLA -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <template x-for="img in datosImagenesJohn" :key="img.id">
+            <div class="bg-white rounded-lg border border-gray-200 shadow hover:shadow-md transition-shadow overflow-hidden flex flex-col justify-between">
+              
+              <!-- HEADER DE TARJETA -->
+              <div class="p-3 bg-gray-50 border-b border-gray-100 flex justify-between items-center text-xs">
+                <span class="font-mono text-[11px] text-indigo-900 font-bold truncate max-w-[140px]" x-text="img.hash_corto || img.hash_largo || ('#' + img.id)"></span>
+                <div class="flex items-center gap-1.5">
+                  <span class="bg-indigo-100 text-indigo-800 border border-indigo-200 px-2 py-0.5 rounded text-[10px] font-bold" x-text="img.conteo + 'x'"></span>
+                  <span class="px-2 py-0.5 text-[10px] font-bold rounded uppercase" 
+                        :class="img.estado === 'PROCESADO' ? 'bg-green-100 text-green-800 border border-green-300' : 'bg-yellow-100 text-yellow-800 border border-yellow-300'" 
+                        x-text="img.estado || 'PENDIENTE'"></span>
+                </div>
+              </div>
+
+              <!-- CUERPO DE TARJETA: VISTA PREVIA Y METADATOS -->
+              <div class="p-3 flex gap-3 items-start flex-1">
+                <!-- Imagen -->
+                <div class="w-28 h-36 bg-gray-100 rounded-lg overflow-hidden border border-gray-200 shrink-0 relative group">
+                  <img :src="img.url_imagen" alt="Comprobante" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300">
+                  <a :href="img.url_imagen" target="_blank" class="absolute inset-0 bg-zorrilla/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white text-xs font-bold">
+                    🔍 Ampliar
+                  </a>
+                </div>
+
+                <!-- Detalle de WhatsApp -->
+                <div class="space-y-2 text-xs flex-1 min-w-0">
+                  <div>
+                    <p class="text-[10px] text-gray-500 font-semibold uppercase tracking-wider">Remitente:</p>
+                    <p class="font-bold text-indigo-900 truncate" x-text="img.nombre_push || img.usuario_raw || 'Desconocido'"></p>
+                  </div>
+
+                  <div>
+                    <p class="text-[10px] text-gray-500 font-semibold uppercase tracking-wider">Grupo / JID:</p>
+                    <p class="font-mono text-[10px] text-gray-600 truncate" x-text="img.grupo_raw || 'Chat Directo'"></p>
+                  </div>
+
+                  <div>
+                    <p class="text-[10px] text-gray-500 font-semibold uppercase tracking-wider">Caption / Texto:</p>
+                    <p class="text-[11px] text-gray-700 bg-gray-50 p-2 rounded border border-gray-200 line-clamp-2 italic" x-text="img.caption || 'Sin texto...'"></p>
+                  </div>
+                </div>
+              </div>
+
+              <!-- FOOTER DE TARJETA -->
+              <div class="px-3 py-2 bg-gray-50 border-t border-gray-100 text-[10px] font-mono text-gray-400 text-right">
+                <span x-text="img.created_at ? new Date(img.created_at).toLocaleString('es-ES') : '-'"></span>
+              </div>
+
+            </div>
+          </template>
+        </div>
+
+        <div x-show="datosImagenesJohn.length === 0" class="p-12 text-center text-gray-400 italic bg-white rounded-lg border border-gray-200">
+          No se encontraron imágenes registradas bajo la instancia "JOHN".
+        </div>
+
+      </div>
+
+      <!-- VISTA GENÉRICA -->
+      <div x-show="tablaActiva !== 'registros' && tablaActiva !== 'vista_pares' && tablaActiva !== 'tasas_mercado' && tablaActiva !== 'imagenes_john'" x-cloak class="max-w-full mx-auto">
+        <div class="bg-white rounded-lg shadow overflow-hidden">
+          <div class="p-4 border-b border-gray-100 flex justify-between items-center bg-gray-50">
+            <h2 class="font-bold text-gray-700 capitalize flex items-center gap-2">
+              <svg class="w-5 h-5 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s-8-1.79-8-4"></path></svg>
+              Tabla: <span x-text="tablaActiva"></span>
+            </h2>
+            <span class="text-xs text-gray-500 font-mono bg-gray-200 px-2 py-1 rounded">Últimos 100 registros</span>
+          </div>
+          
+          <div class="overflow-x-auto w-full">
+            <table class="w-full text-left border-collapse whitespace-nowrap">
+              <thead class="bg-indigo-50 border-b border-indigo-100 text-xs text-indigo-800 uppercase">
+                <tr>
+                  <template x-for="col in columnasGenericas" :key="col">
+                    <th class="p-3 font-bold tracking-wider border-r border-indigo-100/50" x-text="col"></th>
+                  </template>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-gray-200 text-sm">
+                <template x-for="(row, idx) in datosGenericos" :key="idx">
+                  <tr class="hover:bg-indigo-50/40 transition-colors">
+                    <template x-for="col in columnasGenericas" :key="col">
+                      <td class="p-3 text-gray-700 border-r border-gray-100/50" x-text="row[col] !== null ? row[col] : '-'"></td>
+                    </template>
+                  </tr>
+                </template>
+                <tr x-show="datosGenericos.length === 0">
+                  <td :colspan="columnasGenericas.length || 1" class="p-8 text-center text-gray-400 italic bg-gray-50">No hay registros almacenados en esta tabla.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+    </main>
+  </div>
+
+  <!-- MODAL: AGREGAR NUEVO PAR -->
+  <div x-show="modalNuevoPar" class="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4" x-cloak>
+    <div @click.outside="modalNuevoPar = false" class="bg-white rounded-xl p-5 max-w-sm w-full space-y-4 shadow-2xl">
+      <div class="flex justify-between items-center border-b pb-2">
+        <h3 class="text-sm font-bold text-gray-800">Agregar Nuevo Par de Divisas</h3>
+        <button @click="modalNuevoPar = false" class="text-gray-400 hover:text-gray-600 font-bold text-sm">✕</button>
+      </div>
+      
+      <div class="space-y-3">
+        <div>
+          <label class="block text-xs font-semibold text-gray-700 mb-1">Moneda Origen (Ej. JZ_PEN, USD)</label>
+          <input type="text" x-model="nuevoParForm.orig" placeholder="EJ. JZ_PEN" class="w-full border border-gray-300 p-2 rounded text-xs font-bold uppercase focus:ring-2 focus:ring-indigo-500 outline-none">
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-gray-700 mb-1">Moneda Destino (Ej. VES, COP)</label>
+          <input type="text" x-model="nuevoParForm.dest" placeholder="EJ. VES" class="w-full border border-gray-300 p-2 rounded text-xs font-bold uppercase focus:ring-2 focus:ring-indigo-500 outline-none">
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-gray-700 mb-1">Comisión Inicial (%)</label>
+          <input type="number" step="0.1" x-model.number="nuevoParForm.comision" class="w-full border border-gray-300 p-2 rounded text-xs font-bold text-emerald-700 focus:ring-2 focus:ring-indigo-500 outline-none">
+        </div>
+      </div>
+
+      <div class="flex justify-end gap-2 pt-2 border-t">
+        <button @click="modalNuevoPar = false" class="px-3 py-1.5 border border-gray-300 rounded text-xs font-semibold text-gray-600">Cancelar</button>
+        <button @click="guardarNuevoPar()" class="px-4 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded text-xs font-bold shadow">Crear Par</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal de Edición de Remesa -->
+  <div x-show="modalAbierto" class="fixed inset-0 bg-black/60 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 overflow-y-auto" x-cloak>
+    <div 
+      @click.outside="modalAbierto = false" 
+      class="rounded-t-2xl sm:rounded-xl p-4 sm:p-6 max-w-md w-full space-y-3.5 shadow-2xl max-h-[92vh] overflow-y-auto transition-colors duration-300"
+      :class="obtenerColorModal(formEdit.tipo_operacion)"
+    >
+      <div class="flex justify-between items-center border-b border-gray-200/50 pb-3 sticky top-0 z-10 backdrop-blur-sm bg-white/30 rounded-lg p-2 -mx-2 -mt-2 shadow-sm">
+        <div>
+          <h3 class="text-base sm:text-lg font-bold text-gray-800">Remesa #<span x-text="formEdit.id"></span></h3>
+          <p class="text-xs text-gray-600 font-mono" x-text="'Hash: ' + (formEdit.hash_corto || 'N/A')"></p>
+        </div>
+        <div class="flex gap-1.5 items-center">
+          <button 
+            type="button" 
+            @click="alternarTipoOperacion()"
+            class="px-2 py-0.5 text-xs font-bold rounded uppercase cursor-pointer hover:opacity-80 transition-opacity shadow-sm border border-gray-300"
+            :class="String(formEdit.tipo_operacion || '').toLowerCase().includes('ingreso') || String(formEdit.tipo_operacion || '').toLowerCase().includes('deposito') ? 'bg-emerald-600 text-white' : (String(formEdit.tipo_operacion || '').toLowerCase().includes('egreso') || String(formEdit.tipo_operacion || '').toLowerCase().includes('transfe') ? 'bg-rose-600 text-white' : 'bg-gray-100 text-gray-600')"
+            x-text="traducirTipo(formEdit.tipo_operacion)"
+            title="Clic para cambiar el tipo de operación"
+          ></button>
+
+          <span class="px-2 py-0.5 text-xs font-bold rounded bg-indigo-100 text-indigo-800 border border-indigo-200" x-text="formEdit.moneda || 'USD'"></span>
+          
+          <input type="text" x-model="formEdit.estado" class="w-8 px-1 py-0.5 text-center text-xs font-bold rounded border uppercase focus:ring-1 focus:ring-indigo-500 focus:outline-none" :class="formEdit.estado === 'P' || formEdit.estado === 'Pendiente' ? 'bg-yellow-100 text-yellow-800 border-yellow-300' : 'bg-green-100 text-green-800 border-green-300'">
+        </div>
+      </div>
+
+      <div class="space-y-3 pt-1">
+        <div>
+          <label class="block text-xs font-semibold text-gray-700 mb-1">Titular</label>
+          <input type="text" x-model="formEdit.titular" class="w-full border border-gray-300/80 bg-white/90 p-2 rounded text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none shadow-sm">
+        </div>
+
+        <div class="grid grid-cols-2 gap-2.5">
+          <div>
+            <label class="block text-xs font-semibold text-gray-700 mb-1">Monto</label>
+            <input type="number" step="0.01" x-model="formEdit.monto" class="w-full border border-gray-300/80 bg-white/90 p-2 rounded text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none shadow-sm">
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-gray-700 mb-1">Número de Tasa</label>
+            <input type="text" x-model="formEdit.tasa" class="w-full border border-gray-300/80 bg-white/90 p-2 rounded text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none shadow-sm">
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-gray-700 mb-1">Moneda</label>
+          <input type="text" x-model="formEdit.moneda" class="w-full border border-gray-300/80 bg-white/90 p-2 rounded text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none shadow-sm">
+        </div>
+      </div>
+
+      <div class="pt-1">
+        <button @click="verMas = !verMas" type="button" class="text-xs font-semibold text-indigo-800 hover:text-indigo-950 flex items-center gap-1 focus:outline-none py-1">
+          <span x-text="verMas ? 'Ver menos detalles' : 'Ver más detalles...'"></span>
+          <svg class="w-3.5 h-3.5 transform transition-transform" :class="verMas ? 'rotate-180' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+        </button>
+      </div>
+
+      <div x-show="verMas" x-cloak class="space-y-3 pt-2 border-t border-gray-200/50">
+        <div class="grid grid-cols-2 gap-2.5">
+          <div>
+            <label class="block text-xs font-semibold text-gray-700 mb-1">Fecha / Hora</label>
+            <input type="text" x-model="formEdit.fecha_hora" readonly class="w-full border border-gray-300/80 bg-white/50 p-2 rounded text-xs text-gray-600 shadow-sm cursor-not-allowed">
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-gray-700 mb-1">Banco</label>
+            <input type="text" x-model="formEdit.banco" class="w-full border border-gray-300/80 bg-white/90 p-2 rounded text-xs focus:ring-2 focus:ring-indigo-500 focus:outline-none shadow-sm">
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-2.5">
+          <div>
+            <label class="block text-xs font-semibold text-gray-700 mb-1 flex items-center gap-1">
+              <span>Timestamp</span>
+              <span class="text-[10px] text-indigo-600 font-bold uppercase">(Editable)</span>
+            </label>
+            <input 
+              type="text" 
+              x-model="formEdit.timestamp" 
+              @input="actualizarFechaHoraDesdeTimestamp()"
+              class="w-full border border-indigo-300 bg-white p-2 rounded text-xs font-mono font-bold text-gray-900 focus:ring-2 focus:ring-indigo-500 focus:outline-none shadow-sm cursor-text"
+            >
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-gray-700 mb-1">Link Adjunto</label>
+            <div class="flex gap-1">
+              <input type="text" x-model="formEdit.hiperlink" class="w-full border border-gray-300/80 bg-white/90 p-1.5 rounded text-xs focus:ring-2 focus:ring-indigo-500 focus:outline-none shadow-sm">
+              <template x-if="formEdit.hiperlink">
+                <a :href="formEdit.hiperlink" target="_blank" class="p-1.5 bg-white hover:bg-gray-100 rounded border border-gray-300 flex items-center justify-center text-indigo-700 shrink-0 shadow-sm">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg>
+                </a>
+              </template>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="flex justify-end gap-2 pt-3 border-t border-gray-200/50 mt-4">
+        <button @click="modalAbierto = false" class="w-full sm:w-auto px-4 py-2 border border-gray-300 bg-white/80 rounded-lg text-xs font-semibold text-gray-700 hover:bg-white shadow-sm">Cancelar</button>
+        <button @click="guardarCambios()" class="w-full sm:w-auto px-5 py-2 bg-zorrilla hover:bg-zorrilla-dark text-white rounded-lg text-xs font-bold shadow-md">Guardar</button>
+      </div>
+
+    </div>
+  </div>
+
+  <script>
+    function dashboardApp() {
+      return {
+        asesores: [], hashes: [], remesas: [],
+        asesorSeleccionado: '', fechaInicio: '', fechaFin: '', hashSeleccionado: '',
+        fechaMenuAbierto: false,
+        
+        tablaActiva: 'registros',
+        sidebarAbierto: false,
+        datosPares: [],
+        datosGenericos: [], columnasGenericas: [],
+
+        // Módulo Tasas & Comisiones
+        tasasActivas: {}, idTasaActiva: 'T000',
+        borradorTasas: {},
+        factoresMatriz: {},
+        modalNuevoPar: false,
+        nuevoParForm: { orig: '', dest: '', comision: 10 },
+        datosImagenesJohn: [],
+
+        // Pares Predeterminados de J. Zorrilla (Nombres exactos)
+        paresBaseJZ: [
+          { key: 'USD_VES', orig: 'USD', dest: 'VES', label: 'USD ➔ VES' },
+          { key: 'PEN_VES', orig: 'PEN', dest: 'VES', label: 'PEN ➔ VES' },
+          { key: 'PEN_COP', orig: 'PEN', dest: 'COP', label: 'PEN ➔ COP' },
+          { key: 'COP_VES', orig: 'COP', dest: 'VES', label: 'COP ➔ VES' },
+          { key: 'MXN_VES', orig: 'MXN', dest: 'VES', label: 'MXN ➔ VES' },
+          { key: 'PYP_VES', orig: 'PYP', dest: 'VES', label: 'PYP (PayPal) ➔ VES' },
+          { key: 'ESP_VES', orig: 'ESP', dest: 'VES', label: 'ESP (EUR) ➔ VES' },
+          { key: 'BIZ_VES', orig: 'BIZ', dest: 'VES', label: 'BIZ ➔ VES' },
+          { key: 'ARS_VES', orig: 'ARS', dest: 'VES', label: 'ARS ➔ VES' },
+          { key: 'VES_COP', orig: 'VES', dest: 'COP', label: 'VES ➔ COP' },
+          { key: 'VES_PEN', orig: 'VES', dest: 'PEN', label: 'VES ➔ PEN' },
+          { key: 'PEN_CLP', orig: 'PEN', dest: 'CLP', label: 'PEN ➔ CLP' },
+          { key: 'USD_COP', orig: 'USD', dest: 'COP', label: 'USD ➔ COP' },
+          { key: 'USD_PEN', orig: 'USD', dest: 'PEN', label: 'USD ➔ PEN' },
+          { key: 'COP_PEN', orig: 'COP', dest: 'PEN', label: 'COP ➔ PEN' },
+          { key: 'ZX_PEN_VES', orig: 'ZX_PEN', dest: 'VES', label: 'ZX_PEN ➔ VES' },
+          { key: 'JZ_PEN_VES', orig: 'JZ_PEN', dest: 'VES', label: 'JZ_PEN ➔ VES' },
+          { key: 'JZ_USD_VES', orig: 'JZ_USD', dest: 'VES', label: 'JZ_USD ➔ VES' },
+          { key: 'JZ_COP_VES', orig: 'JZ_COP', dest: 'VES', label: 'JZ_COP ➔ VES' }
+        ],
+        paresJZ: [],
+
+        modalAbierto: false, verMas: false,
+        sortCol: 'id', sortAsc: false,
+        formEdit: { id: null, monto: 0, estado: '', titular: '', moneda: '', tasa: '', banco: '', fecha_hora: '', timestamp: '', hiperlink: '', hash_corto: '', tipo_operacion: '' },
+
+        async init() {
+          this.sincronizarParesConBD();
+          try {
+            const resA = await fetch('/api/asesores');
+            if (resA.ok) this.asesores = await resA.json();
+            await this.cambiarTabla('registros');
+          } catch (e) {
+            console.error(e);
+          } finally {
+            setTimeout(() => {
+              const preloader = document.getElementById('preloader');
+              if (preloader) {
+                preloader.classList.add('opacity-0', 'pointer-events-none');
+                setTimeout(() => preloader.remove(), 700);
+              }
+            }, 1800);
+          }
+        },
+
+        async cambiarTabla(nombre) {
+          this.tablaActiva = nombre;
+          this.sidebarAbierto = false;
+
+          if (nombre === 'registros') {
+            await this.onFiltroPadreChange();
+          } else if (nombre === 'vista_pares') {
+            this.datosPares = [];
+            try {
+              const res = await fetch('/api/tabla/vista_pares');
+              if (res.ok) this.datosPares = await res.json();
+            } catch (e) {
+              console.error('Error al cargar vista_pares:', e);
+            }
+          } else if (nombre === 'tasas_mercado') {
+            await this.cargarTasasActivas();
+            await this.cargarFactores();
+          } else if (nombre === 'imagenes_john') {
+            await this.cargarImagenesJohn();
+          } else {
+            this.datosGenericos = [];
+            this.columnasGenericas = [];
+            try {
+              const res = await fetch(`/api/tabla/${nombre}`);
+              if (res.ok) {
+                this.datosGenericos = await res.json();
+                if (this.datosGenericos.length > 0) {
+                  this.columnasGenericas = Object.keys(this.datosGenericos[0]);
+                }
+              }
+            } catch (e) {
+              console.error('Error:', e);
+            }
+          }
+        },
+
+        // Helper para mostrar nombres entendibles
+        formatearNombreMoneda(m) {
+          if (!m) return '';
+          const clave = String(m).toUpperCase().trim();
+          if (clave === 'ESP') return 'ESP (EUR)';
+          if (clave === 'PYP') return 'PYP (PayPal)';
+          return clave;
+        },
+
+        // Método para cargar imágenes RAW de JOHN
+        async cargarImagenesJohn() {
+          try {
+            const res = await fetch('/api/raw-imagenes?instancia=JOHN');
+            const data = await res.json();
+            if (data && data.success) {
+              this.datosImagenesJohn = data.rows || [];
+            }
+          } catch (e) {
+            console.error('Error cargando imágenes de JOHN:', e);
+          }
+        },
+
+        // Métodos de Tasas y Factores
+        async cargarTasasActivas() {
+          try {
+            const res = await fetch('/api/tasas/ultimas');
+            const data = await res.json();
+            if (data && data.success) {
+              this.idTasaActiva = data.id_tasa || 'T001';
+              this.tasasActivas = data.tasas || {};
+            }
+          } catch (e) { console.error('Error cargando tasas activas:', e); }
+        },
+
+        async cargarBorrador() {
+          try {
+            const res = await fetch('/api/tasas/fetch-hoo');
+            const data = await res.json();
+            if (!data || !data.success) return alert(data.msg || 'Sin borrador pendiente en BD.');
+            this.borradorTasas = data.rates || {};
+          } catch (e) { alert('Error al consultar borrador.'); }
+        },
+
+        async publicarTasa() {
+          if (Object.keys(this.borradorTasas).length === 0) return alert('No hay borrador que publicar.');
+          if (!confirm('¿Deseas publicar este lote como oficial?')) return;
+          try {
+            const res = await fetch('/api/tasas/publicar', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ tasas: this.borradorTasas })
+            });
+            const data = await res.json();
+            alert(data.message);
+            this.borradorTasas = {};
+            await this.cargarTasasActivas();
+          } catch (e) { alert('Error al publicar lote de tasas.'); }
+        },
+
+        async cargarFactores() {
+          try {
+            const res = await fetch('/api/tasas/factores');
+            const data = await res.json();
+            if (data && data.success) {
+              this.factoresMatriz = data.factores || {};
+            }
+          } catch (e) { 
+            console.error('Error cargando factores:', e); 
+          } finally {
+            this.sincronizarParesConBD();
+          }
+        },
+
+        sincronizarParesConBD() {
+          const paresDict = {};
+          
+          (this.paresBaseJZ || []).forEach(p => { 
+            paresDict[`${p.orig}_${p.dest}`] = p; 
+          });
+
+          if (this.factoresMatriz) {
+            Object.keys(this.factoresMatriz).forEach(orig => {
+              if (this.factoresMatriz[orig]) {
+                Object.keys(this.factoresMatriz[orig]).forEach(dest => {
+                  const key = `${orig}_${dest}`;
+                  if (!paresDict[key]) {
+                    const labelOrig = this.formatearNombreMoneda(orig);
+                    const labelDest = this.formatearNombreMoneda(dest);
+                    paresDict[key] = { key, orig, dest, label: `${labelOrig} ➔ ${labelDest}` };
+                  }
+                });
+              }
+            });
+          }
+
+          this.paresJZ = Object.values(paresDict);
+        },
+
+        abrirModalNuevoPar() {
+          this.nuevoParForm = { orig: '', dest: '', comision: 10 };
+          this.modalNuevoPar = true;
+        },
+
+        async guardarNuevoPar() {
+          const orig = String(this.nuevoParForm.orig || '').trim().toUpperCase();
+          const dest = String(this.nuevoParForm.dest || '').trim().toUpperCase();
+          const comision = parseFloat(this.nuevoParForm.comision) || 0;
+
+          if (!orig || !dest) return alert('Ingresa la moneda de origen y destino.');
+          if (orig === dest) return alert('Las monedas deben ser distintas.');
+
+          this.actualizarComisionPar(orig, dest, comision);
+
+          try {
+            const res = await fetch('/api/tasas/factores', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                moneda_origen: orig,
+                factores: this.factoresMatriz[orig] || {}
+              })
+            });
+            const data = await res.json();
+            alert(`✅ Par ${orig} ➔ ${dest} guardado correctamente.`);
+            this.modalNuevoPar = false;
+            await this.cargarFactores();
+          } catch (e) {
+            alert('Error al guardar el nuevo par.');
+          }
+        },
+
+        obtenerComisionPar(orig, dest) {
+          if (!this.factoresMatriz || !this.factoresMatriz[orig] || this.factoresMatriz[orig][dest] === undefined) {
+            return 10;
+          }
+          const factor = this.factoresMatriz[orig][dest];
+          return Number(((1 - factor) * 100).toFixed(2));
+        },
+
+        actualizarComisionPar(orig, dest, pctVal) {
+          const pct = parseFloat(pctVal) || 0;
+          const factorCalculado = Number((1 - (pct / 100)).toFixed(4));
+          if (!this.factoresMatriz) this.factoresMatriz = {};
+          if (!this.factoresMatriz[orig]) this.factoresMatriz[orig] = {};
+          this.factoresMatriz[orig][dest] = factorCalculado;
+        },
+
+        async guardarTodasLasComisiones() {
+          try {
+            const origenes = Object.keys(this.factoresMatriz || {});
+            if (origenes.length === 0) return alert('No hay comisiones para guardar.');
+
+            for (const orig of origenes) {
+              await fetch('/api/tasas/factores', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  moneda_origen: orig,
+                  factores: this.factoresMatriz[orig] || {}
+                })
+              });
+            }
+            alert('✅ Comisiones actualizadas correctamente.');
+          } catch (e) {
+            alert('Error al guardar comisiones.');
+          }
+        },
+
+        traducirTipo(tipo) {
+          if (!tipo) return '-';
+          const t = String(tipo).toLowerCase().trim();
+          if (t.includes('ingreso') || t.includes('deposito') || t.includes('depósito')) return 'DEPÓSITO';
+          if (t.includes('egreso') || t.includes('transfe')) return 'TRANSFERENCIA';
+          return tipo;
+        },
+
+        obtenerColorFila(tipo) {
+          if (!tipo) return 'bg-white hover:bg-gray-50 border-l-transparent';
+          const t = String(tipo).toLowerCase().trim();
+          if (t.includes('ingreso') || t.includes('deposito') || t.includes('depósito')) return 'bg-emerald-50/80 border-l-emerald-500 hover:bg-emerald-100/80';
+          if (t.includes('egreso') || t.includes('transfe')) return 'bg-rose-50/80 border-l-rose-500 hover:bg-rose-100/80';
+          return 'bg-white hover:bg-gray-50 border-l-transparent';
+        },
+
+        obtenerColorModal(tipo) {
+          if (!tipo) return 'bg-white';
+          const t = String(tipo).toLowerCase().trim();
+          if (t.includes('ingreso') || t.includes('deposito') || t.includes('depósito')) return 'bg-emerald-50/95 border border-emerald-200';
+          if (t.includes('egreso') || t.includes('transfe')) return 'bg-rose-50/95 border border-rose-200';
+          return 'bg-white border border-gray-200';
+        },
+
+        alternarTipoOperacion() {
+          const t = String(this.formEdit.tipo_operacion || '').toLowerCase().trim();
+          if (t.includes('ingreso') || t.includes('deposito') || t.includes('depósito')) {
+             this.formEdit.tipo_operacion = 'Egreso';
+          } else {
+             this.formEdit.tipo_operacion = 'Ingreso';
+          }
+        },
+
+        actualizarFechaHoraDesdeTimestamp() {
+          const raw = String(this.formEdit.timestamp || '').trim();
+          if (!raw) return;
+          let ts = parseInt(raw, 10);
+          if (isNaN(ts)) return;
+
+          if (ts > 1e11) ts = Math.floor(ts / 1000);
+
+          if (ts > 1000000000) {
+            const fecha = new Date(ts * 1000);
+            const offsetVET = -4 * 60;
+            const fechaVET = new Date(fecha.getTime() + (offsetVET + fecha.getTimezoneOffset()) * 60000);
+
+            const yyyy = fechaVET.getFullYear();
+            const mm = String(fechaVET.getMonth() + 1).padStart(2, '0');
+            const dd = String(fechaVET.getDate()).padStart(2, '0');
+            const hh = String(fechaVET.getHours()).padStart(2, '0');
+            const min = String(fechaVET.getMinutes()).padStart(2, '0');
+            const ss = String(fechaVET.getSeconds()).padStart(2, '0');
+
+            this.formEdit.fecha_hora = `${yyyy}-${mm}-${dd} ${hh}:${min}:${ss}`;
+          }
+        },
+
+        ordenarPor(columna) {
+          if (this.sortCol === columna) {
+            this.sortAsc = !this.sortAsc;
+          } else {
+            this.sortCol = columna;
+            this.sortAsc = true;
+          }
+        },
+
+        get remesasOrdenadas() {
+          return [...this.remesas].sort((a, b) => {
+            let valA = a[this.sortCol];
+            let valB = b[this.sortCol];
+
+            if (this.sortCol === 'monto' || this.sortCol === 'id') {
+              valA = Number(valA || 0);
+              valB = Number(valB || 0);
+            } else {
+              valA = String(valA || '').toLowerCase();
+              valB = String(valB || '').toLowerCase();
+            }
+
+            if (valA < valB) return this.sortAsc ? -1 : 1;
+            if (valA > valB) return this.sortAsc ? 1 : -1;
+            return 0;
+          });
+        },
+
+        obtenerTextoRangoFecha() {
+          if (this.fechaInicio && this.fechaFin) return `${this.fechaInicio} al ${this.fechaFin}`;
+          if (this.fechaInicio) return `Desde ${this.fechaInicio}`;
+          if (this.fechaFin) return `Hasta ${this.fechaFin}`;
+          return 'Fechas: Todas';
+        },
+
+        limpiarFechas() {
+          this.fechaInicio = '';
+          this.fechaFin = '';
+          this.onFiltroPadreChange();
+        },
+
+        async onFiltroPadreChange() {
+          this.hashSeleccionado = '';
+          await this.cargarHashes();
+          await this.cargarRemesas();
+        },
+
+        async cargarHashes() {
+          const url = `/api/hashes?asesor=${encodeURIComponent(this.asesorSeleccionado)}&fechaInicio=${this.fechaInicio}&fechaFin=${this.fechaFin}`;
+          const res = await fetch(url);
+          if (res.ok) this.hashes = await res.json();
+        },
+
+        async cargarRemesas() {
+          const url = `/api/remesas?asesor=${encodeURIComponent(this.asesorSeleccionado)}&fechaInicio=${this.fechaInicio}&fechaFin=${this.fechaFin}&hash=${encodeURIComponent(this.hashSeleccionado)}`;
+          const res = await fetch(url);
+          if (res.ok) this.remesas = await res.json();
+        },
+
+        calcularTotal() {
+          const total = this.remesas.reduce((acc, r) => acc + Number(r.monto || 0), 0);
+          return total.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        },
+
+        abrirEditar(item) {
+          this.formEdit = { ...item };
+          this.verMas = false;
+          this.modalAbierto = true;
+        },
+
+        async guardarCambios() {
+          await fetch(`/api/remesas/${this.formEdit.id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(this.formEdit)
+          });
+          this.modalAbierto = false;
+          await this.cargarRemesas();
+        }
       }
     }
-    await client.query('COMMIT');
-    res.json({ success: true, message: 'Borrador cargado en PostgreSQL.' });
-  } catch (err) {
-    await client.query('ROLLBACK');
-    res.status(500).json({ success: false, error: err.message });
-  } finally {
-    client.release();
-  }
-});
-
-// 3. Obtener borrador pendiente
-app.get('/api/tasas/fetch-hoo', async (req, res) => {
-  try {
-    const rates = await pool.query(`SELECT moneda, tasa_base FROM mercado_tasas WHERE id_tasa = 'BORRADOR';`);
-    if (rates.rows.length === 0) return res.status(404).json({ success: false, msg: 'Sin borrador pendiente.' });
-    const ratesObj = {};
-    rates.rows.forEach(r => { ratesObj[r.moneda.toUpperCase()] = parseFloat(r.tasa_base); });
-    res.json({ success: true, rates: ratesObj });
-  } catch (err) { 
-    res.status(500).json({ success: false, error: err.message }); 
-  }
-});
-
-// 4. Promocionar borrador a lote oficial (Transaccional)
-app.post('/api/tasas/publicar', async (req, res) => {
-  const client = await pool.connect();
-  try {
-    const tasas = req.body.tasas || {};
-    const timestamp = Math.floor(Date.now() / 1000);
-
-    await client.query('BEGIN');
-    const lastLot = await client.query(
-      `SELECT id_tasa FROM mercado_tasas WHERE id_tasa != 'BORRADOR' ORDER BY id DESC LIMIT 1;`
-    );
-    
-    let num = 1;
-    if (lastLot.rows.length > 0) {
-      const match = lastLot.rows[0].id_tasa.match(/\d+/);
-      if (match) num = parseInt(match[0], 10) + 1;
-    }
-    const idTasaOficial = `T${String(num).padStart(3, '0')}`;
-
-    for (const [moneda, valor] of Object.entries(tasas)) {
-      await client.query(
-        `INSERT INTO mercado_tasas (id_tasa, moneda, tasa_base, timestamp) VALUES ($1, $2, $3, $4);`, 
-        [idTasaOficial, moneda.toUpperCase(), parseFloat(valor), timestamp]
-      );
-    }
-    await client.query("DELETE FROM mercado_tasas WHERE id_tasa = 'BORRADOR';");
-    await client.query('COMMIT');
-
-    res.json({ success: true, message: `Lote ${idTasaOficial} publicado con éxito.` });
-  } catch (err) {
-    await client.query('ROLLBACK');
-    res.status(500).json({ success: false, error: err.message });
-  } finally {
-    client.release();
-  }
-});
-
-// 5. Matriz de factores
-app.get('/api/tasas/factores', async (req, res) => {
-  try {
-    const resBD = await pool.query('SELECT moneda_origen, moneda_destino, factor FROM factores_matriz;');
-    const matriz = {};
-    resBD.rows.forEach(r => {
-      if (!matriz[r.moneda_origen]) matriz[r.moneda_origen] = {};
-      matriz[r.moneda_origen][r.moneda_destino] = parseFloat(r.factor);
-    });
-    res.json({ success: true, factores: matriz });
-  } catch (err) { 
-    res.status(500).json({ success: false, error: err.message }); 
-  }
-});
-
-app.post('/api/tasas/factores', async (req, res) => {
-  const client = await pool.connect();
-  try {
-    const { moneda_origen, factores } = req.body;
-    if (!moneda_origen || !factores) {
-      return res.status(400).json({ success: false, error: 'Parámetros faltantes.' });
-    }
-
-    await client.query('BEGIN');
-    for (const [destino, val] of Object.entries(factores)) {
-      await client.query(`
-        INSERT INTO factores_matriz (moneda_origen, moneda_destino, factor) VALUES ($1, $2, $3)
-        ON CONFLICT (moneda_origen, moneda_destino) DO UPDATE SET factor = EXCLUDED.factor;
-      `, [moneda_origen.toUpperCase(), destino.toUpperCase(), parseFloat(val)]);
-    }
-    await client.query('COMMIT');
-
-    res.json({ success: true, message: 'Factores actualizados.' });
-  } catch (err) {
-    await client.query('ROLLBACK');
-    res.status(500).json({ success: false, error: err.message });
-  } finally {
-    client.release();
-  }
-});
-
-// Endpoint: Asesores
-app.get('/api/asesores', async (req, res) => {
-  try {
-    const { rows } = await pool.query(
-      "SELECT DISTINCT nombre_asesor FROM registros WHERE nombre_asesor IS NOT NULL AND nombre_asesor != '' ORDER BY nombre_asesor"
-    );
-    res.json(rows);
-  } catch (err) {
-    console.error('❌ Error en /api/asesores:', err.message);
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// Endpoint: Hashes dinámicos
-app.get('/api/hashes', async (req, res) => {
-  try {
-    const { asesor, fechaInicio, fechaFin } = req.query;
-    let query = `SELECT DISTINCT hash_corto FROM registros WHERE hash_corto IS NOT NULL AND hash_corto != ''`;
-    let params = [];
-
-    if (asesor) {
-      params.push(asesor);
-      query += ` AND nombre_asesor = $${params.length}`;
-    }
-    if (fechaInicio) {
-      params.push(fechaInicio);
-      query += ` AND created_at::date >= $${params.length}`;
-    }
-    if (fechaFin) {
-      params.push(fechaFin);
-      query += ` AND created_at::date <= $${params.length}`;
-    }
-
-    query += ' ORDER BY hash_corto';
-    const { rows } = await pool.query(query, params);
-    res.json(rows);
-  } catch (err) {
-    console.error('❌ Error en /api/hashes:', err.message);
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// Endpoint: Registros principales
-app.get('/api/remesas', async (req, res) => {
-  try {
-    const { asesor, fechaInicio, fechaFin, hash } = req.query;
-    let query = `
-      SELECT 
-        id, 
-        nombre_asesor, 
-        monto, 
-        estado_proceso AS estado, 
-        tipo_operacion,
-        hash_corto,
-        titular,
-        moneda,
-        tasa,
-        banco,
-        fecha_hora,
-        timestamp,
-        hiperlink,
-        created_at
-      FROM registros 
-      WHERE 1=1`;
-    let params = [];
-
-    if (asesor) {
-      params.push(asesor);
-      query += ` AND nombre_asesor = $${params.length}`;
-    }
-    if (fechaInicio) {
-      params.push(fechaInicio);
-      query += ` AND created_at::date >= $${params.length}`;
-    }
-    if (fechaFin) {
-      params.push(fechaFin);
-      query += ` AND created_at::date <= $${params.length}`;
-    }
-    if (hash) {
-      params.push(hash);
-      query += ` AND hash_corto = $${params.length}`;
-    }
-
-    query += ' ORDER BY id DESC LIMIT 200';
-    const { rows } = await pool.query(query, params);
-    res.json(rows);
-  } catch (err) {
-    console.error('❌ Error en /api/remesas:', err.message);
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// Endpoint: Visor Genérico (Corregido nombre de la tabla mercado_tasas)
-app.get('/api/tabla/:nombre', async (req, res) => {
-  const tablasPermitidas = ['registros', 'cola_recepcion', 'vista_pares', 'mercado_tasas', 't_nombres'];
-  const tabla = req.params.nombre;
-  
-  if (!tablasPermitidas.includes(tabla)) {
-    return res.status(403).json({ error: 'Tabla no autorizada para revisión' });
-  }
-
-  try {
-    const { rows } = await pool.query(`SELECT * FROM ${tabla} ORDER BY 1 DESC LIMIT 100`);
-    res.json(rows);
-  } catch (err) {
-    console.error(`❌ Error en /api/tabla/${tabla}:`, err.message);
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// Endpoint: Guardar cambios
-app.put('/api/remesas/:id', async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { monto, estado, titular, moneda, tasa, banco, hiperlink, tipo_operacion } = req.body;
-
-    await pool.query(
-      `UPDATE registros 
-       SET monto = $1, estado_proceso = $2, titular = $3, moneda = $4, tasa = $5, banco = $6, hiperlink = $7, tipo_operacion = $8
-       WHERE id = $9`,
-      [monto, estado, titular, moneda, tasa, banco, hiperlink, tipo_operacion, id]
-    );
-
-    res.json({ success: true });
-  } catch (err) {
-    console.error('❌ Error en /api/remesas/:id:', err.message);
-    res.status(500).json({ error: err.message });
-  }
-});
-
-const PORT = process.env.PORT || 80;
-app.listen(PORT, () => console.log(`Servidor activo en puerto ${PORT}`));
+  </script>
+</body>
+</html>
