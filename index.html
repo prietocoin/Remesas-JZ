@@ -337,7 +337,7 @@
             <div class="grid grid-cols-3 gap-3">
               <template x-for="(valor, moneda) in tasasActivas" :key="moneda">
                 <div class="bg-gray-50 border border-gray-200 p-2.5 rounded-lg">
-                  <span class="text-[10px] text-indigo-600 font-bold block" x-text="moneda"></span>
+                  <span class="text-[10px] text-indigo-600 font-bold block" x-text="formatearNombreMoneda(moneda)"></span>
                   <span class="text-sm font-bold text-gray-800" x-text="Number(valor).toLocaleString('es-ES', { minimumFractionDigits: 2 })"></span>
                 </div>
               </template>
@@ -353,7 +353,7 @@
             <div class="grid grid-cols-3 gap-3">
               <template x-for="(valor, moneda) in borradorTasas" :key="moneda">
                 <div class="bg-amber-50/50 border border-amber-200 p-2.5 rounded-lg">
-                  <span class="text-[10px] text-amber-800 font-bold block" x-text="moneda"></span>
+                  <span class="text-[10px] text-amber-800 font-bold block" x-text="formatearNombreMoneda(moneda)"></span>
                   <input type="number" step="any" x-model.number="borradorTasas[moneda]" class="w-full bg-white text-gray-900 font-bold text-xs p-1 rounded border border-amber-300 outline-none">
                 </div>
               </template>
@@ -592,15 +592,15 @@
         modalNuevoPar: false,
         nuevoParForm: { orig: '', dest: '', comision: 10 },
 
-        // Pares Predeterminados de J. Zorrilla
+        // Pares Predeterminados de J. Zorrilla (Nombres exactos)
         paresBaseJZ: [
           { key: 'USD_VES', orig: 'USD', dest: 'VES', label: 'USD ➔ VES' },
           { key: 'PEN_VES', orig: 'PEN', dest: 'VES', label: 'PEN ➔ VES' },
           { key: 'PEN_COP', orig: 'PEN', dest: 'COP', label: 'PEN ➔ COP' },
           { key: 'COP_VES', orig: 'COP', dest: 'VES', label: 'COP ➔ VES' },
           { key: 'MXN_VES', orig: 'MXN', dest: 'VES', label: 'MXN ➔ VES' },
-          { key: 'PYP_VES', orig: 'PYP', dest: 'VES', label: 'PYP ➔ VES' },
-          { key: 'ESP_VES', orig: 'ESP', dest: 'VES', label: 'ESP ➔ VES' },
+          { key: 'PYP_VES', orig: 'PYP', dest: 'VES', label: 'PYP (PayPal) ➔ VES' },
+          { key: 'ESP_VES', orig: 'ESP', dest: 'VES', label: 'ESP (EUR) ➔ VES' },
           { key: 'BIZ_VES', orig: 'BIZ', dest: 'VES', label: 'BIZ ➔ VES' },
           { key: 'ARS_VES', orig: 'ARS', dest: 'VES', label: 'ARS ➔ VES' },
           { key: 'VES_COP', orig: 'VES', dest: 'COP', label: 'VES ➔ COP' },
@@ -621,6 +621,7 @@
         formEdit: { id: null, monto: 0, estado: '', titular: '', moneda: '', tasa: '', banco: '', fecha_hora: '', timestamp: '', hiperlink: '', hash_corto: '', tipo_operacion: '' },
 
         async init() {
+          this.sincronizarParesConBD();
           try {
             const resA = await fetch('/api/asesores');
             if (resA.ok) this.asesores = await resA.json();
@@ -672,12 +673,21 @@
           }
         },
 
+        // Helper para mostrar nombres entendibles
+        formatearNombreMoneda(m) {
+          if (!m) return '';
+          const clave = String(m).toUpperCase().trim();
+          if (clave === 'ESP') return 'ESP (EUR)';
+          if (clave === 'PYP') return 'PYP (PayPal)';
+          return clave;
+        },
+
         // Métodos de Tasas y Factores
         async cargarTasasActivas() {
           try {
             const res = await fetch('/api/tasas/ultimas');
             const data = await res.json();
-            if (data.success) {
+            if (data && data.success) {
               this.idTasaActiva = data.id_tasa || 'T001';
               this.tasasActivas = data.tasas || {};
             }
@@ -688,7 +698,7 @@
           try {
             const res = await fetch('/api/tasas/fetch-hoo');
             const data = await res.json();
-            if (!data.success) return alert(data.msg || 'Sin borrador pendiente en BD.');
+            if (!data || !data.success) return alert(data.msg || 'Sin borrador pendiente en BD.');
             this.borradorTasas = data.rates || {};
           } catch (e) { alert('Error al consultar borrador.'); }
         },
@@ -713,25 +723,37 @@
           try {
             const res = await fetch('/api/tasas/factores');
             const data = await res.json();
-            if (data.success) {
+            if (data && data.success) {
               this.factoresMatriz = data.factores || {};
-              this.sincronizarParesConBD();
             }
-          } catch (e) { console.error('Error cargando factores:', e); }
+          } catch (e) { 
+            console.error('Error cargando factores:', e); 
+          } finally {
+            this.sincronizarParesConBD();
+          }
         },
 
         sincronizarParesConBD() {
           const paresDict = {};
-          this.paresBaseJZ.forEach(p => { paresDict[`${p.orig}_${p.dest}`] = p; });
+          
+          (this.paresBaseJZ || []).forEach(p => { 
+            paresDict[`${p.orig}_${p.dest}`] = p; 
+          });
 
-          Object.keys(this.factoresMatriz || {}).forEach(orig => {
-            Object.keys(this.factoresMatriz[orig] || {}).forEach(dest => {
-              const key = `${orig}_${dest}`;
-              if (!paresDict[key]) {
-                paresDict[key] = { key, orig, dest, label: `${orig} ➔ ${dest}` };
+          if (this.factoresMatriz) {
+            Object.keys(this.factoresMatriz).forEach(orig => {
+              if (this.factoresMatriz[orig]) {
+                Object.keys(this.factoresMatriz[orig]).forEach(dest => {
+                  const key = `${orig}_${dest}`;
+                  if (!paresDict[key]) {
+                    const labelOrig = this.formatearNombreMoneda(orig);
+                    const labelDest = this.formatearNombreMoneda(dest);
+                    paresDict[key] = { key, orig, dest, label: `${labelOrig} ➔ ${labelDest}` };
+                  }
+                });
               }
             });
-          });
+          }
 
           this.paresJZ = Object.values(paresDict);
         },
@@ -770,15 +792,17 @@
         },
 
         obtenerComisionPar(orig, dest) {
-          const factor = (this.factoresMatriz[orig] && this.factoresMatriz[orig][dest] !== undefined) 
-            ? this.factoresMatriz[orig][dest] 
-            : 0.90;
+          if (!this.factoresMatriz || !this.factoresMatriz[orig] || this.factoresMatriz[orig][dest] === undefined) {
+            return 10;
+          }
+          const factor = this.factoresMatriz[orig][dest];
           return Number(((1 - factor) * 100).toFixed(2));
         },
 
         actualizarComisionPar(orig, dest, pctVal) {
           const pct = parseFloat(pctVal) || 0;
           const factorCalculado = Number((1 - (pct / 100)).toFixed(4));
+          if (!this.factoresMatriz) this.factoresMatriz = {};
           if (!this.factoresMatriz[orig]) this.factoresMatriz[orig] = {};
           this.factoresMatriz[orig][dest] = factorCalculado;
         },
