@@ -313,13 +313,13 @@
         </div>
       </div>
 
-      <!-- VISTA ESPECIALIZADA: TASAS MERCADO & FACTORES -->
+      <!-- VISTA ESPECIALIZADA: TASAS MERCADO & COMISIONES (%) -->
       <div x-show="tablaActiva === 'tasas_mercado'" x-cloak class="max-w-6xl mx-auto space-y-6">
         
         <div class="flex justify-between items-center bg-white p-4 rounded-lg shadow border border-gray-200">
           <div>
             <h2 class="text-base font-bold text-gray-800">Motor Cambiario de Remesas</h2>
-            <p class="text-xs text-gray-500">Administración de Lotes Oficiales y Márgenes de Ganancia</p>
+            <p class="text-xs text-gray-500">Administración de Lotes Oficiales y Comisiones por Divisa</p>
           </div>
           <button @click="cargarBorrador()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs px-4 py-2 rounded-lg shadow transition">
             🔄 Traer Borrador n8n
@@ -364,10 +364,13 @@
           </div>
         </div>
 
-        <!-- BLOQUE: MATRIZ DE FACTORES -->
+        <!-- BLOQUE: COMISIONES POR PAR (%) -->
         <div class="bg-white border border-gray-200 rounded-lg p-5 space-y-4 shadow">
           <div class="flex justify-between items-center border-b border-gray-100 pb-3">
-            <h3 class="text-xs font-bold text-indigo-900 uppercase tracking-wider">Matriz de Margen / Factor de Ganancia</h3>
+            <div>
+              <h3 class="text-xs font-bold text-indigo-900 uppercase tracking-wider">Comisión por Par (%)</h3>
+              <p class="text-[10px] text-gray-400">Porcentaje de ganancia cobrado al cliente</p>
+            </div>
             <select x-model="origenMatriz" class="bg-gray-50 border border-indigo-300 rounded px-3 py-1 text-xs text-indigo-900 font-bold outline-none">
               <template x-for="m in monedasMatriz" :key="m">
                 <option :value="m" x-text="m"></option>
@@ -378,15 +381,18 @@
             <template x-for="dest in monedasMatriz.filter(m => m !== origenMatriz)" :key="dest">
               <div class="bg-indigo-50/40 border border-indigo-100 p-2.5 rounded-lg">
                 <span class="text-[10px] text-indigo-700 font-bold block" x-text="origenMatriz + ' ➔ ' + dest"></span>
-                <input type="number" step="0.001" 
-                       :value="(factoresMatriz[origenMatriz] && factoresMatriz[origenMatriz][dest]) ? factoresMatriz[origenMatriz][dest] : 0.90" 
-                       @input="actualizarFactor(dest, $event.target.value)"
-                       class="w-full bg-white text-emerald-700 font-bold text-xs p-1 rounded border border-indigo-200 mt-1 outline-none">
+                <div class="relative mt-1">
+                  <input type="number" step="0.1" min="0" max="100" 
+                         :value="obtenerComisionPorcentaje(origenMatriz, dest)" 
+                         @input="guardarComisionPorcentaje(dest, $event.target.value)"
+                         class="w-full bg-white text-emerald-700 font-bold text-xs p-1.5 pr-6 rounded border border-indigo-200 outline-none">
+                  <span class="absolute right-2 top-1.5 text-xs text-gray-400 font-bold">%</span>
+                </div>
               </div>
             </template>
           </div>
           <button @click="guardarFactores()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs px-5 py-2 rounded-lg transition shadow">
-            💾 Guardar Matriz de Factores
+            💾 Guardar Comisiones
           </button>
         </div>
 
@@ -635,7 +641,7 @@
 
         async publicarTasa() {
           if (Object.keys(this.borradorTasas).length === 0) return alert('No hay borrador que publicar.');
-          if (!confirm('¿Deseas publicar este lote como official?')) return;
+          if (!confirm('¿Deseas publicar este lote como oficial?')) return;
           try {
             const res = await fetch('/api/tasas/publicar', {
               method: 'POST',
@@ -657,9 +663,20 @@
           } catch (e) { console.error('Error cargando factores:', e); }
         },
 
-        actualizarFactor(dest, val) {
+        // Conversión: Factor BD (ej. 0.935) -> Porcentaje Visual (6.5%)
+        obtenerComisionPorcentaje(orig, dest) {
+          const factor = (this.factoresMatriz[orig] && this.factoresMatriz[orig][dest] !== undefined) 
+            ? this.factoresMatriz[orig][dest] 
+            : 0.90;
+          return Number(((1 - factor) * 100).toFixed(2));
+        },
+
+        // Conversión: Porcentaje Usuario (ej. 10%) -> Factor BD (0.90)
+        guardarComisionPorcentaje(dest, pctVal) {
+          const pct = parseFloat(pctVal) || 0;
+          const factorCalculado = Number((1 - (pct / 100)).toFixed(4));
           if (!this.factoresMatriz[this.origenMatriz]) this.factoresMatriz[this.origenMatriz] = {};
-          this.factoresMatriz[this.origenMatriz][dest] = parseFloat(val);
+          this.factoresMatriz[this.origenMatriz][dest] = factorCalculado;
         },
 
         async guardarFactores() {
@@ -674,7 +691,7 @@
             });
             const data = await res.json();
             alert(data.message);
-          } catch (e) { alert('Error al guardar matriz de factores.'); }
+          } catch (e) { alert('Error al guardar matriz de comisiones.'); }
         },
 
         traducirTipo(tipo) {
