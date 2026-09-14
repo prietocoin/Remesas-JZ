@@ -4,7 +4,9 @@ const path = require('path');
 
 const app = express();
 app.use(express.json());
-app.use(express.static(__dirname));
+
+// Seguridad: Evitar servir el directorio raíz completo (proteger server.js)
+app.use(express.static(path.join(__dirname, 'public')));
 
 const pool = new Pool({
   host: process.env.DB_HOST || 'automatizaciones_db-remesas',
@@ -22,7 +24,6 @@ app.get('/', (req, res) => {
 // MÓDULO TASAS & FACTORES - REMESAS JZ
 // ==========================================
 
-// Inicialización automática de tablas en PostgreSQL
 async function initTasasJZ() {
   try {
     await pool.query(`
@@ -52,33 +53,51 @@ initTasasJZ();
 // 1. Lectura de tasa activa en producción
 app.get('/api/tasas/ultimas', async (req, res) => {
   try {
-    const lastLot = await pool.query(`SELECT id_tasa FROM mercado_tasas WHERE id_tasa != 'BORRADOR' ORDER BY timestamp DESC, id DESC LIMIT 1;`);
-    if (lastLot.rows.length === 0) return res.json({ id_tasa: 'T001', tasas: { USD: 1.0, USDT: 1.0 } });
+    const lastLot = await pool.query(
+      `SELECT id_tasa FROM mercado_tasas WHERE id_tasa != 'BORRADOR' ORDER BY timestamp DESC, id DESC LIMIT 1;`
+    );
+    if (lastLot.rows.length === 0) {
+      return res.json({ success: true, id_tasa: 'T001', tasas: { USD: 1.0, USDT: 1.0 } });
+    }
     
     const idTasa = lastLot.rows[0].id_tasa;
     const rates = await pool.query(`SELECT moneda, tasa_base FROM mercado_tasas WHERE id_tasa = $1;`, [idTasa]);
     const tasasObj = { USD: 1.0, USDT: 1.0 };
     rates.rows.forEach(r => { tasasObj[r.moneda.toUpperCase()] = parseFloat(r.tasa_base); });
     res.json({ success: true, id_tasa: idTasa, tasas: tasasObj });
-  } catch (err) { res.status(500).json({ success: false, error: err.message }); }
+  } catch (err) { 
+    res.status(500).json({ success: false, error: err.message }); 
+  }
 });
 
-// 2. Recepción de Webhook desde n8n -> Guarda 'BORRADOR'
+// 2. Recepción de Webhook desde n8n (Transaccional)
 app.post('/api/tasas/n8n-webhook', async (req, res) => {
+  const client = await pool.connect();
   try {
     let payload = Array.isArray(req.body) ? req.body[0] : req.body;
-    let rates = payload.rates || payload.json || payload;
+    let rates = (payload && (payload.rates || payload.json || payload)) || {};
     const timestamp = Math.floor(Date.now() / 1000);
 
-    await pool.query("DELETE FROM mercado_tasas WHERE id_tasa = 'BORRADOR';");
+    await client.query('BEGIN');
+    await client.query("DELETE FROM mercado_tasas WHERE id_tasa = 'BORRADOR';");
+    
     for (const [moneda, valor] of Object.entries(rates)) {
-      if (!isNaN(parseFloat(valor))) {
-        await pool.query(`INSERT INTO mercado_tasas (id_tasa, moneda, tasa_base, timestamp) VALUES ('BORRADOR', $1, $2, $3);`, 
-        [moneda.toUpperCase(), parseFloat(valor), timestamp]);
+      const numValor = parseFloat(valor);
+      if (!isNaN(numValor)) {
+        await client.query(
+          `INSERT INTO mercado_tasas (id_tasa, moneda, tasa_base, timestamp) VALUES ('BORRADOR', $1, $2, $3);`, 
+          [moneda.toUpperCase(), numValor, timestamp]
+        );
       }
     }
+    await client.query('COMMIT');
     res.json({ success: true, message: 'Borrador cargado en PostgreSQL.' });
-  } catch (err) { res.status(500).json({ success: false, error: err.message }); }
+  } catch (err) {
+    await client.query('ROLLBACK');
+    res.status(500).json({ success: false, error: err.message });
+  } finally {
+    client.release();
+  }
 });
 
 // 3. Obtener borrador pendiente
@@ -89,15 +108,22 @@ app.get('/api/tasas/fetch-hoo', async (req, res) => {
     const ratesObj = {};
     rates.rows.forEach(r => { ratesObj[r.moneda.toUpperCase()] = parseFloat(r.tasa_base); });
     res.json({ success: true, rates: ratesObj });
-  } catch (err) { res.status(500).json({ success: false, error: err.message }); }
+  } catch (err) { 
+    res.status(500).json({ success: false, error: err.message }); 
+  }
 });
 
-// 4. Promocionar borrador a lote oficial (T001, T002...)
+// 4. Promocionar borrador a lote oficial (Transaccional)
 app.post('/api/tasas/publicar', async (req, res) => {
+  const client = await pool.connect();
   try {
-    const { tasas } = req.body;
+    const tasas = req.body.tasas || {};
     const timestamp = Math.floor(Date.now() / 1000);
-    const lastLot = await pool.query(`SELECT id_tasa FROM mercado_tasas WHERE id_tasa != 'BORRADOR' ORDER BY id DESC LIMIT 1;`);
+
+    await client.query('BEGIN');
+    const lastLot = await client.query(
+      `SELECT id_tasa FROM mercado_tasas WHERE id_tasa != 'BORRADOR' ORDER BY id DESC LIMIT 1;`
+    );
     
     let num = 1;
     if (lastLot.rows.length > 0) {
@@ -107,12 +133,21 @@ app.post('/api/tasas/publicar', async (req, res) => {
     const idTasaOficial = `T${String(num).padStart(3, '0')}`;
 
     for (const [moneda, valor] of Object.entries(tasas)) {
-      await pool.query(`INSERT INTO mercado_tasas (id_tasa, moneda, tasa_base, timestamp) VALUES ($1, $2, $3, $4);`, 
-      [idTasaOficial, moneda.toUpperCase(), parseFloat(valor), timestamp]);
+      await client.query(
+        `INSERT INTO mercado_tasas (id_tasa, moneda, tasa_base, timestamp) VALUES ($1, $2, $3, $4);`, 
+        [idTasaOficial, moneda.toUpperCase(), parseFloat(valor), timestamp]
+      );
     }
-    await pool.query("DELETE FROM mercado_tasas WHERE id_tasa = 'BORRADOR';");
+    await client.query("DELETE FROM mercado_tasas WHERE id_tasa = 'BORRADOR';");
+    await client.query('COMMIT');
+
     res.json({ success: true, message: `Lote ${idTasaOficial} publicado con éxito.` });
-  } catch (err) { res.status(500).json({ success: false, error: err.message }); }
+  } catch (err) {
+    await client.query('ROLLBACK');
+    res.status(500).json({ success: false, error: err.message });
+  } finally {
+    client.release();
+  }
 });
 
 // 5. Matriz de factores
@@ -125,20 +160,35 @@ app.get('/api/tasas/factores', async (req, res) => {
       matriz[r.moneda_origen][r.moneda_destino] = parseFloat(r.factor);
     });
     res.json({ success: true, factores: matriz });
-  } catch (err) { res.status(500).json({ success: false, error: err.message }); }
+  } catch (err) { 
+    res.status(500).json({ success: false, error: err.message }); 
+  }
 });
 
 app.post('/api/tasas/factores', async (req, res) => {
+  const client = await pool.connect();
   try {
     const { moneda_origen, factores } = req.body;
+    if (!moneda_origen || !factores) {
+      return res.status(400).json({ success: false, error: 'Parámetros faltantes.' });
+    }
+
+    await client.query('BEGIN');
     for (const [destino, val] of Object.entries(factores)) {
-      await pool.query(`
+      await client.query(`
         INSERT INTO factores_matriz (moneda_origen, moneda_destino, factor) VALUES ($1, $2, $3)
         ON CONFLICT (moneda_origen, moneda_destino) DO UPDATE SET factor = EXCLUDED.factor;
       `, [moneda_origen.toUpperCase(), destino.toUpperCase(), parseFloat(val)]);
     }
+    await client.query('COMMIT');
+
     res.json({ success: true, message: 'Factores actualizados.' });
-  } catch (err) { res.status(500).json({ success: false, error: err.message }); }
+  } catch (err) {
+    await client.query('ROLLBACK');
+    res.status(500).json({ success: false, error: err.message });
+  } finally {
+    client.release();
+  }
 });
 
 // Endpoint: Asesores
@@ -233,9 +283,9 @@ app.get('/api/remesas', async (req, res) => {
   }
 });
 
-// Endpoint: Visor Genérico para revisión de otras tablas
+// Endpoint: Visor Genérico (Corregido nombre de la tabla mercado_tasas)
 app.get('/api/tabla/:nombre', async (req, res) => {
-  const tablasPermitidas = ['registros', 'cola_recepcion', 'vista_pares', 'tasas_mercado', 't_nombres'];
+  const tablasPermitidas = ['registros', 'cola_recepcion', 'vista_pares', 'mercado_tasas', 't_nombres'];
   const tabla = req.params.nombre;
   
   if (!tablasPermitidas.includes(tabla)) {
