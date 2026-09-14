@@ -8,12 +8,11 @@ app.use(express.json({ limit: '10mb' }));
 // Servir archivos estáticos desde la raíz del proyecto
 app.use(express.static(__dirname));
 
-// Conexión a la Base de Datos Macro / General (Host actual para la red)
 const pool = new Pool({
   host: process.env.DB_HOST || 'postgres-db',
   port: Number(process.env.DB_PORT) || 5432,
   user: process.env.DB_USER || 'postgres',
-  password: process.env.DB_PASSWORD,
+  password: String(process.env.DB_PASSWORD || ''), // <-- Forzado a String para evitar el crash de SASL
   database: process.env.DB_NAME || 'automatizaciones',
 });
 
