@@ -364,35 +364,35 @@
           </div>
         </div>
 
-        <!-- BLOQUE: COMISIONES POR PAR (%) -->
+        <!-- BLOQUE: COMISIÓN POR PAR REGISTRADO (%) -->
         <div class="bg-white border border-gray-200 rounded-lg p-5 space-y-4 shadow">
           <div class="flex justify-between items-center border-b border-gray-100 pb-3">
             <div>
               <h3 class="text-xs font-bold text-indigo-900 uppercase tracking-wider">Comisión por Par (%)</h3>
-              <p class="text-[10px] text-gray-400">Porcentaje de ganancia cobrado al cliente</p>
+              <p class="text-[10px] text-gray-400">Pares oficiales configurados para J. Zorrilla</p>
             </div>
-            <select x-model="origenMatriz" class="bg-gray-50 border border-indigo-300 rounded px-3 py-1 text-xs text-indigo-900 font-bold outline-none">
-              <template x-for="m in monedasMatriz" :key="m">
-                <option :value="m" x-text="m"></option>
-              </template>
-            </select>
+            <button @click="abrirModalNuevoPar()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs px-3 py-1.5 rounded-lg shadow transition flex items-center gap-1">
+              <span>+ Agregar Par</span>
+            </button>
           </div>
-          <div class="grid grid-cols-2 md:grid-cols-5 gap-3">
-            <template x-for="dest in monedasMatriz.filter(m => m !== origenMatriz)" :key="dest">
+
+          <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
+            <template x-for="p in paresJZ" :key="p.key">
               <div class="bg-indigo-50/40 border border-indigo-100 p-2.5 rounded-lg">
-                <span class="text-[10px] text-indigo-700 font-bold block" x-text="origenMatriz + ' ➔ ' + dest"></span>
+                <span class="text-[10px] text-indigo-700 font-bold block" x-text="p.label"></span>
                 <div class="relative mt-1">
                   <input type="number" step="0.1" min="0" max="100" 
-                         :value="obtenerComisionPorcentaje(origenMatriz, dest)" 
-                         @input="guardarComisionPorcentaje(dest, $event.target.value)"
+                         :value="obtenerComisionPar(p.orig, p.dest)" 
+                         @input="actualizarComisionPar(p.orig, p.dest, $event.target.value)"
                          class="w-full bg-white text-emerald-700 font-bold text-xs p-1.5 pr-6 rounded border border-indigo-200 outline-none">
                   <span class="absolute right-2 top-1.5 text-xs text-gray-400 font-bold">%</span>
                 </div>
               </div>
             </template>
           </div>
-          <button @click="guardarFactores()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs px-5 py-2 rounded-lg transition shadow">
-            💾 Guardar Comisiones
+
+          <button @click="guardarTodasLasComisiones()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs px-5 py-2.5 rounded-lg transition shadow">
+            💾 Guardar Todas las Comisiones
           </button>
         </div>
 
@@ -438,7 +438,37 @@
     </main>
   </div>
 
-  <!-- Modal de Edición -->
+  <!-- MODAL: AGREGAR NUEVO PAR -->
+  <div x-show="modalNuevoPar" class="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4" x-cloak>
+    <div @click.outside="modalNuevoPar = false" class="bg-white rounded-xl p-5 max-w-sm w-full space-y-4 shadow-2xl">
+      <div class="flex justify-between items-center border-b pb-2">
+        <h3 class="text-sm font-bold text-gray-800">Agregar Nuevo Par de Divisas</h3>
+        <button @click="modalNuevoPar = false" class="text-gray-400 hover:text-gray-600 font-bold text-sm">✕</button>
+      </div>
+      
+      <div class="space-y-3">
+        <div>
+          <label class="block text-xs font-semibold text-gray-700 mb-1">Moneda Origen (Ej. JZ_PEN, USD)</label>
+          <input type="text" x-model="nuevoParForm.orig" placeholder="EJ. JZ_PEN" class="w-full border border-gray-300 p-2 rounded text-xs font-bold uppercase focus:ring-2 focus:ring-indigo-500 outline-none">
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-gray-700 mb-1">Moneda Destino (Ej. VES, COP)</label>
+          <input type="text" x-model="nuevoParForm.dest" placeholder="EJ. VES" class="w-full border border-gray-300 p-2 rounded text-xs font-bold uppercase focus:ring-2 focus:ring-indigo-500 outline-none">
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-gray-700 mb-1">Comisión Inicial (%)</label>
+          <input type="number" step="0.1" x-model.number="nuevoParForm.comision" class="w-full border border-gray-300 p-2 rounded text-xs font-bold text-emerald-700 focus:ring-2 focus:ring-indigo-500 outline-none">
+        </div>
+      </div>
+
+      <div class="flex justify-end gap-2 pt-2 border-t">
+        <button @click="modalNuevoPar = false" class="px-3 py-1.5 border border-gray-300 rounded text-xs font-semibold text-gray-600">Cancelar</button>
+        <button @click="guardarNuevoPar()" class="px-4 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded text-xs font-bold shadow">Crear Par</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal de Edición de Remesa -->
   <div x-show="modalAbierto" class="fixed inset-0 bg-black/60 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 overflow-y-auto" x-cloak>
     <div 
       @click.outside="modalAbierto = false" 
@@ -555,12 +585,36 @@
         datosPares: [],
         datosGenericos: [], columnasGenericas: [],
 
-        // Módulo Tasas & Factores
+        // Módulo Tasas & Comisiones
         tasasActivas: {}, idTasaActiva: 'T000',
         borradorTasas: {},
         factoresMatriz: {},
-        origenMatriz: 'PEN',
-        monedasMatriz: ['VES', 'PEN', 'COP', 'CLP', 'MXN', 'USD', 'EUR', 'ARS', 'PYG', 'USDT'],
+        modalNuevoPar: false,
+        nuevoParForm: { orig: '', dest: '', comision: 10 },
+
+        // Pares Predeterminados de J. Zorrilla
+        paresBaseJZ: [
+          { key: 'USD_VES', orig: 'USD', dest: 'VES', label: 'USD ➔ VES' },
+          { key: 'PEN_VES', orig: 'PEN', dest: 'VES', label: 'PEN ➔ VES' },
+          { key: 'PEN_COP', orig: 'PEN', dest: 'COP', label: 'PEN ➔ COP' },
+          { key: 'COP_VES', orig: 'COP', dest: 'VES', label: 'COP ➔ VES' },
+          { key: 'MXN_VES', orig: 'MXN', dest: 'VES', label: 'MXN ➔ VES' },
+          { key: 'PYP_VES', orig: 'PYP', dest: 'VES', label: 'PYP ➔ VES' },
+          { key: 'ESP_VES', orig: 'ESP', dest: 'VES', label: 'ESP ➔ VES' },
+          { key: 'BIZ_VES', orig: 'BIZ', dest: 'VES', label: 'BIZ ➔ VES' },
+          { key: 'ARS_VES', orig: 'ARS', dest: 'VES', label: 'ARS ➔ VES' },
+          { key: 'VES_COP', orig: 'VES', dest: 'COP', label: 'VES ➔ COP' },
+          { key: 'VES_PEN', orig: 'VES', dest: 'PEN', label: 'VES ➔ PEN' },
+          { key: 'PEN_CLP', orig: 'PEN', dest: 'CLP', label: 'PEN ➔ CLP' },
+          { key: 'USD_COP', orig: 'USD', dest: 'COP', label: 'USD ➔ COP' },
+          { key: 'USD_PEN', orig: 'USD', dest: 'PEN', label: 'USD ➔ PEN' },
+          { key: 'COP_PEN', orig: 'COP', dest: 'PEN', label: 'COP ➔ PEN' },
+          { key: 'ZX_PEN_VES', orig: 'ZX_PEN', dest: 'VES', label: 'ZX_PEN ➔ VES' },
+          { key: 'JZ_PEN_VES', orig: 'JZ_PEN', dest: 'VES', label: 'JZ_PEN ➔ VES' },
+          { key: 'JZ_USD_VES', orig: 'JZ_USD', dest: 'VES', label: 'JZ_USD ➔ VES' },
+          { key: 'JZ_COP_VES', orig: 'JZ_COP', dest: 'VES', label: 'JZ_COP ➔ VES' }
+        ],
+        paresJZ: [],
 
         modalAbierto: false, verMas: false,
         sortCol: 'id', sortAsc: false,
@@ -659,39 +713,95 @@
           try {
             const res = await fetch('/api/tasas/factores');
             const data = await res.json();
-            if (data.success) this.factoresMatriz = data.factores || {};
+            if (data.success) {
+              this.factoresMatriz = data.factores || {};
+              this.sincronizarParesConBD();
+            }
           } catch (e) { console.error('Error cargando factores:', e); }
         },
 
-        // Conversión: Factor BD (ej. 0.935) -> Porcentaje Visual (6.5%)
-        obtenerComisionPorcentaje(orig, dest) {
+        sincronizarParesConBD() {
+          const paresDict = {};
+          this.paresBaseJZ.forEach(p => { paresDict[`${p.orig}_${p.dest}`] = p; });
+
+          Object.keys(this.factoresMatriz || {}).forEach(orig => {
+            Object.keys(this.factoresMatriz[orig] || {}).forEach(dest => {
+              const key = `${orig}_${dest}`;
+              if (!paresDict[key]) {
+                paresDict[key] = { key, orig, dest, label: `${orig} ➔ ${dest}` };
+              }
+            });
+          });
+
+          this.paresJZ = Object.values(paresDict);
+        },
+
+        abrirModalNuevoPar() {
+          this.nuevoParForm = { orig: '', dest: '', comision: 10 };
+          this.modalNuevoPar = true;
+        },
+
+        async guardarNuevoPar() {
+          const orig = String(this.nuevoParForm.orig || '').trim().toUpperCase();
+          const dest = String(this.nuevoParForm.dest || '').trim().toUpperCase();
+          const comision = parseFloat(this.nuevoParForm.comision) || 0;
+
+          if (!orig || !dest) return alert('Ingresa la moneda de origen y destino.');
+          if (orig === dest) return alert('Las monedas deben ser distintas.');
+
+          this.actualizarComisionPar(orig, dest, comision);
+
+          try {
+            const res = await fetch('/api/tasas/factores', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                moneda_origen: orig,
+                factores: this.factoresMatriz[orig] || {}
+              })
+            });
+            const data = await res.json();
+            alert(`✅ Par ${orig} ➔ ${dest} guardado correctamente.`);
+            this.modalNuevoPar = false;
+            await this.cargarFactores();
+          } catch (e) {
+            alert('Error al guardar el nuevo par.');
+          }
+        },
+
+        obtenerComisionPar(orig, dest) {
           const factor = (this.factoresMatriz[orig] && this.factoresMatriz[orig][dest] !== undefined) 
             ? this.factoresMatriz[orig][dest] 
             : 0.90;
           return Number(((1 - factor) * 100).toFixed(2));
         },
 
-        // Conversión: Porcentaje Usuario (ej. 10%) -> Factor BD (0.90)
-        guardarComisionPorcentaje(dest, pctVal) {
+        actualizarComisionPar(orig, dest, pctVal) {
           const pct = parseFloat(pctVal) || 0;
           const factorCalculado = Number((1 - (pct / 100)).toFixed(4));
-          if (!this.factoresMatriz[this.origenMatriz]) this.factoresMatriz[this.origenMatriz] = {};
-          this.factoresMatriz[this.origenMatriz][dest] = factorCalculado;
+          if (!this.factoresMatriz[orig]) this.factoresMatriz[orig] = {};
+          this.factoresMatriz[orig][dest] = factorCalculado;
         },
 
-        async guardarFactores() {
+        async guardarTodasLasComisiones() {
           try {
-            const res = await fetch('/api/tasas/factores', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                moneda_origen: this.origenMatriz,
-                factores: this.factoresMatriz[this.origenMatriz] || {}
-              })
-            });
-            const data = await res.json();
-            alert(data.message);
-          } catch (e) { alert('Error al guardar matriz de comisiones.'); }
+            const origenes = Object.keys(this.factoresMatriz || {});
+            if (origenes.length === 0) return alert('No hay comisiones para guardar.');
+
+            for (const orig of origenes) {
+              await fetch('/api/tasas/factores', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  moneda_origen: orig,
+                  factores: this.factoresMatriz[orig] || {}
+                })
+              });
+            }
+            alert('✅ Comisiones actualizadas correctamente.');
+          } catch (e) {
+            alert('Error al guardar comisiones.');
+          }
         },
 
         traducirTipo(tipo) {
