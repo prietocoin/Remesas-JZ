@@ -26,7 +26,7 @@ app.get('/', (req, res) => {
 });
 
 // ==========================================
-// MÓDULO TASAS & FACTORES - REMESAS JZ (ISLADO)
+// MÓDULO TASAS & FACTORES - REMESAS JZ (AISLADO)
 // ==========================================
 
 async function initTasasJZ() {
@@ -75,7 +75,66 @@ app.get('/api/tasas/ultimas', async (req, res) => {
   }
 });
 
-// 2. Recepción de Webhook desde n8n
+// 2. Consulta en vivo desde Binance P2P API y guardado directo en BORRADOR
+app.post('/api/tasas/binance', async (req, res) => {
+  const client = await pool.connect();
+  try {
+    const fiats = ['PEN', 'VES', 'COP', 'CLP', 'MXN', 'ARS', 'EUR'];
+    const ratesObj = { USD: 1.0, USDT: 1.0 };
+
+    for (const fiat of fiats) {
+      try {
+        const response = await fetch('https://p2p.binance.com/bapi/c2c/v2/friendly/c2c/adv/search', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            page: 1,
+            rows: 5,
+            asset: 'USDT',
+            fiat: fiat,
+            tradeType: 'BUY'
+          })
+        });
+        const data = await response.json();
+        if (data && data.data && data.data.length > 0) {
+          const precios = data.data.slice(0, 3).map(adv => parseFloat(adv.adv.price));
+          const promedio = precios.reduce((a, b) => a + b, 0) / precios.length;
+          ratesObj[fiat] = Number(promedio.toFixed(2));
+        }
+      } catch (e) {
+        console.error(`Error consultando Binance P2P (${fiat}):`, e.message);
+      }
+    }
+
+    // Mapeos de compatibilidad JZ
+    if (ratesObj['EUR']) ratesObj['ESP'] = ratesObj['EUR'];
+    ratesObj['PYP'] = ratesObj['VES'] ? Number((ratesObj['VES'] * 0.82).toFixed(2)) : 790.00;
+
+    const timestamp = Math.floor(Date.now() / 1000);
+
+    await client.query('BEGIN');
+    await client.query("DELETE FROM jz_mercado_tasas WHERE id_tasa = 'BORRADOR';");
+    
+    for (const [moneda, valor] of Object.entries(ratesObj)) {
+      if (!isNaN(valor)) {
+        await client.query(
+          `INSERT INTO jz_mercado_tasas (id_tasa, moneda, tasa_base, timestamp) VALUES ('BORRADOR', $1, $2, $3);`, 
+          [moneda.toUpperCase(), valor, timestamp]
+        );
+      }
+    }
+    await client.query('COMMIT');
+
+    res.json({ success: true, message: 'Borrador cargado desde Binance API.', rates: ratesObj });
+  } catch (err) {
+    await client.query('ROLLBACK');
+    res.status(500).json({ success: false, error: err.message });
+  } finally {
+    client.release();
+  }
+});
+
+// 3. Recepción de Webhook desde n8n
 app.post('/api/tasas/n8n-webhook', async (req, res) => {
   const client = await pool.connect();
   try {
@@ -105,7 +164,7 @@ app.post('/api/tasas/n8n-webhook', async (req, res) => {
   }
 });
 
-// 3. Obtener borrador pendiente
+// 4. Obtener borrador pendiente
 app.get('/api/tasas/fetch-hoo', async (req, res) => {
   try {
     const rates = await pool.query(`SELECT moneda, tasa_base FROM jz_mercado_tasas WHERE id_tasa = 'BORRADOR';`);
@@ -118,7 +177,7 @@ app.get('/api/tasas/fetch-hoo', async (req, res) => {
   }
 });
 
-// 4. Promocionar borrador a lote oficial
+// 5. Promocionar borrador a lote oficial
 app.post('/api/tasas/publicar', async (req, res) => {
   const client = await pool.connect();
   try {
@@ -155,7 +214,7 @@ app.post('/api/tasas/publicar', async (req, res) => {
   }
 });
 
-// 5. Matriz de factores / comisiones (JZ)
+// 6. Matriz de factores / comisiones (JZ)
 app.get('/api/tasas/factores', async (req, res) => {
   try {
     const resBD = await pool.query('SELECT moneda_origen, moneda_destino, factor FROM jz_factores_matriz;');
