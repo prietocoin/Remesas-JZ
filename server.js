@@ -9,13 +9,12 @@ app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
 const pool = new Pool({
-  host: process.env.DB_HOST || 'automatizaciones_db-remesas',
+  host: process.env.DB_HOST || 'postgres-db', // <-- Host actualizado al contenedor general
   port: process.env.DB_PORT || 5432,
   user: process.env.DB_USER || 'postgres',
   password: process.env.DB_PASSWORD,
   database: process.env.DB_NAME || 'automatizaciones',
 });
-
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'index.html'));
 });
