@@ -386,12 +386,12 @@
           </div>
         </div>
 
-        <!-- BLOQUE: COMISIÓN POR PAR REGISTRADO (%) -->
+        <!-- BLOQUE: COMISIÓN POR PAR REGISTRADO (%) CON PREVIA EN VIVO -->
         <div class="bg-white border border-gray-200 rounded-lg p-5 space-y-4 shadow">
           <div class="flex justify-between items-center border-b border-gray-100 pb-3">
             <div>
               <h3 class="text-xs font-bold text-indigo-900 uppercase tracking-wider">Comisión por Par (%)</h3>
-              <p class="text-[10px] text-gray-400">Pares oficiales configurados para J. Zorrilla</p>
+              <p class="text-[10px] text-gray-400">Pares oficiales configurados para J. Zorrilla (Valor calculado en verde)</p>
             </div>
             <button @click="abrirModalNuevoPar()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs px-3 py-1.5 rounded-lg shadow transition flex items-center gap-1">
               <span>+ Agregar Par</span>
@@ -400,15 +400,24 @@
 
           <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
             <template x-for="p in paresJZ" :key="p.key">
-              <div class="bg-indigo-50/40 border border-indigo-100 p-2.5 rounded-lg">
-                <span class="text-[10px] text-indigo-700 font-bold block" x-text="p.label"></span>
+              <div class="bg-indigo-50/40 border border-indigo-100 p-2.5 rounded-lg flex flex-col justify-between">
+                
+                <!-- Cabecera del Par + Valor Calculado en Vivo -->
+                <div class="flex justify-between items-center mb-1.5 gap-1">
+                  <span class="text-[10px] text-indigo-700 font-bold truncate" x-text="p.label"></span>
+                  <span class="text-xs font-mono font-extrabold text-emerald-800 bg-emerald-100 border border-emerald-300 px-1.5 py-0.5 rounded shadow-sm shrink-0" 
+                        x-text="calcularValorPar(p.key)"></span>
+                </div>
+
+                <!-- Input de Porcentaje de Comisión -->
                 <div class="relative mt-1">
                   <input type="number" step="0.1" min="0" max="100" 
                          :value="obtenerComisionPar(p.orig, p.dest)" 
                          @input="actualizarComisionPar(p.orig, p.dest, $event.target.value)"
-                         class="w-full bg-white text-emerald-700 font-bold text-xs p-1.5 pr-6 rounded border border-indigo-200 outline-none">
+                         class="w-full bg-white text-emerald-700 font-bold text-xs p-1.5 pr-6 rounded border border-indigo-200 outline-none focus:ring-1 focus:ring-indigo-500">
                   <span class="absolute right-2 top-1.5 text-xs text-gray-400 font-bold">%</span>
                 </div>
+
               </div>
             </template>
           </div>
@@ -779,6 +788,85 @@
           if (clave === 'ESP') return 'ESP (EUR)';
           if (clave === 'PYP') return 'PYP (PayPal)';
           return clave;
+        },
+
+        // Truncado dinámico idéntico a la lógica de n8n
+        truncarDinamico(val) {
+          if (!val || isNaN(val) || val <= 0) return 0;
+          let corte = 0;
+          if (val >= 100) {
+            corte = 0;
+          } else if (val >= 1) {
+            corte = 2;
+          } else {
+            corte = Math.floor(-Math.log10(val)) + 2;
+          }
+          const factorDecimal = Math.pow(10, corte);
+          return Math.floor(val * factorDecimal) / factorDecimal;
+        },
+
+        // Factor de conversión decimal a partir del porcentaje
+        obtenerFactorPar(orig, dest) {
+          const pct = this.obtenerComisionPar(orig, dest);
+          return 1 - (pct / 100);
+        },
+
+        // Cálculo dinámico en vivo usando el lote de producción
+        calcularValorPar(parKey) {
+          const t = this.tasasActivas || {};
+          const COP = parseFloat(t.COP || 0);
+          const VES = parseFloat(t.VES || 0);
+          const PEN = parseFloat(t.PEN || 0);
+          const USD = parseFloat(t.USD || 0);
+          const MXN = parseFloat(t.MXN || 0);
+          const ARS = parseFloat(t.ARS || 0);
+          const CLP = parseFloat(t.CLP || 0);
+          const ESP = parseFloat(t.ESP || 0);
+          const PYP = parseFloat(t.PYP || 0);
+
+          const f = (orig, dest) => this.obtenerFactorPar(orig, dest);
+
+          // Cálculos base sin truncar para la composición de pares especiales
+          const rawPEN_VES = PEN ? (1 / PEN) * VES * f('PEN', 'VES') : 0;
+          const rawUSD_VES = USD ? (1 / USD) * VES * f('USD', 'VES') : 0;
+          const rawCOP_VES = VES ? (COP / VES) / f('COP', 'VES') : 0;
+
+          let val = 0;
+          const key = String(parKey).toUpperCase();
+
+          switch (key) {
+            // Regla 1: Multiplicación directa
+            case 'PYP_VES': val = PYP * f('PYP', 'VES'); break;
+            case 'ESP_VES': val = ESP * f('ESP', 'VES'); break;
+            case 'BIZ_VES': val = ESP * f('BIZ', 'VES'); break;
+
+            // Regla 2: División inversa
+            case 'COP_VES': val = rawCOP_VES; break;
+            case 'COP_PEN': val = PEN ? (COP / PEN) / f('COP', 'PEN') : 0; break;
+            case 'VES_PEN': val = PEN ? (VES / PEN) / f('VES', 'PEN') : 0; break;
+
+            // Regla 3: Cruce estándar
+            case 'USD_VES': val = rawUSD_VES; break;
+            case 'PEN_VES': val = rawPEN_VES; break;
+            case 'PEN_COP': val = PEN ? (1 / PEN) * COP * f('PEN', 'COP') : 0; break;
+            case 'MXN_VES': val = MXN ? (1 / MXN) * VES * f('MXN', 'VES') : 0; break;
+            case 'ARS_VES': val = ARS ? (1 / ARS) * VES * f('ARS', 'VES') : 0; break;
+            case 'VES_COP': val = VES ? (1 / VES) * COP * f('VES', 'COP') : 0; break;
+            case 'PEN_CLP': val = PEN ? (1 / PEN) * CLP * f('PEN', 'CLP') : 0; break;
+            case 'USD_COP': val = USD ? (1 / USD) * COP * f('USD', 'COP') : 0; break;
+            case 'USD_PEN': val = USD ? (1 / USD) * PEN * f('USD', 'PEN') : 0; break;
+
+            // Grupos Especiales
+            case 'ZX_PEN_VES': val = rawPEN_VES * 0.99; break;
+            case 'JZ_PEN_VES': val = rawPEN_VES * 1.035; break;
+            case 'JZ_USD_VES': val = rawUSD_VES * 1.035; break;
+            case 'JZ_COP_VES': val = rawCOP_VES * 1.035; break;
+
+            default: val = 0;
+          }
+
+          const resultadoTruncado = this.truncarDinamico(val);
+          return resultadoTruncado ? resultadoTruncado.toLocaleString('es-ES') : '0';
         },
 
         // Método para cargar imágenes RAW de JOHN
