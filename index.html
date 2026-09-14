@@ -326,9 +326,15 @@
             <h2 class="text-base font-bold text-gray-800">Motor Cambiario de Remesas</h2>
             <p class="text-xs text-gray-500">Administración de Lotes Oficiales y Comisiones por Divisa</p>
           </div>
-          <button @click="cargarBorrador()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs px-4 py-2 rounded-lg shadow transition">
-            🔄 Traer Borrador n8n
-          </button>
+          <div class="flex gap-2">
+            <button @click="conectarBinance()" :disabled="cargandoBinance" class="bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs px-4 py-2 rounded-lg shadow transition flex items-center gap-1.5">
+              <span x-show="!cargandoBinance">⚡ Conectar Binance API</span>
+              <span x-show="cargandoBinance" class="animate-spin">⌛ Obteniendo tasas...</span>
+            </button>
+            <button @click="cargarBorrador(false)" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs px-4 py-2 rounded-lg shadow transition">
+              🔄 Traer Borrador n8n
+            </button>
+          </div>
         </div>
 
         <!-- BLOQUE: PRODUCCIÓN VS BORRADOR -->
@@ -349,13 +355,15 @@
             </div>
           </div>
 
-          <!-- Borrador Pendiente -->
+          <!-- Borrador Pendiente / Previa Capturada -->
           <div class="bg-white border border-gray-200 rounded-lg p-5 space-y-4 shadow">
             <div class="flex justify-between items-center border-b border-gray-100 pb-3">
-              <h3 class="text-xs font-bold text-amber-600 uppercase tracking-wider">Borrador Pendiente</h3>
+              <h3 class="text-xs font-bold text-amber-600 uppercase tracking-wider">Borrador Capturado (Paso Previo)</h3>
               <span class="text-[10px] text-gray-400">Edición manual previa a publicación</span>
             </div>
-            <div class="grid grid-cols-3 gap-3">
+
+            <!-- Cuadrícula con previa de borrador -->
+            <div x-show="Object.keys(borradorTasas).length > 0" class="grid grid-cols-3 gap-3">
               <template x-for="(valor, moneda) in borradorTasas" :key="moneda">
                 <div class="bg-amber-50/50 border border-amber-200 p-2.5 rounded-lg">
                   <span class="text-[10px] text-amber-800 font-bold block" x-text="formatearNombreMoneda(moneda)"></span>
@@ -363,8 +371,17 @@
                 </div>
               </template>
             </div>
-            <button @click="publicarTasa()" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs py-2.5 rounded-lg transition shadow">
-              🚀 Publicar como Lote Oficial
+
+            <!-- Estado silencioso cuando no hay borrador activo -->
+            <div x-show="Object.keys(borradorTasas).length === 0" class="p-6 text-center text-xs text-gray-400 italic bg-gray-50 rounded-lg border border-dashed border-gray-200">
+              Sin borrador pendiente. Conecta Binance API o presiona <strong class="text-indigo-600 font-semibold">"Traer Borrador n8n"</strong> para pre-cargar cotizaciones.
+            </div>
+
+            <button @click="publicarTasa()" 
+                    :disabled="Object.keys(borradorTasas).length === 0"
+                    :class="Object.keys(borradorTasas).length > 0 ? 'bg-emerald-600 hover:bg-emerald-700 text-white cursor-pointer' : 'bg-gray-200 text-gray-400 cursor-not-allowed'"
+                    class="w-full font-bold text-xs py-2.5 rounded-lg transition shadow">
+              🚀 Publicar Tasa Oficial a Producción
             </button>
           </div>
         </div>
@@ -403,7 +420,7 @@
 
       </div>
 
-      <!-- VISTA ESPECIALIZADA: MONITOR RAW IMÁGENES JOHN (COSMÉTICA J. ZORRILLA) -->
+      <!-- VISTA ESPECIALIZADA: MONITOR RAW IMÁGENES JOHN -->
       <div x-show="tablaActiva === 'imagenes_john'" x-cloak class="max-w-6xl mx-auto space-y-4">
         
         <div class="flex justify-between items-center bg-white p-4 rounded-lg shadow border border-gray-200">
@@ -421,12 +438,10 @@
           </div>
         </div>
 
-        <!-- GRID DE TARJETAS CON LA ESTÉTICA OFICIAL DE J. ZORRILLA -->
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           <template x-for="img in datosImagenesJohn" :key="img.id">
             <div class="bg-white rounded-lg border border-gray-200 shadow hover:shadow-md transition-shadow overflow-hidden flex flex-col justify-between">
               
-              <!-- HEADER DE TARJETA -->
               <div class="p-3 bg-gray-50 border-b border-gray-100 flex justify-between items-center text-xs">
                 <span class="font-mono text-[11px] text-indigo-900 font-bold truncate max-w-[140px]" x-text="img.hash_corto || img.hash_largo || ('#' + img.id)"></span>
                 <div class="flex items-center gap-1.5">
@@ -437,9 +452,7 @@
                 </div>
               </div>
 
-              <!-- CUERPO DE TARJETA: VISTA PREVIA Y METADATOS -->
               <div class="p-3 flex gap-3 items-start flex-1">
-                <!-- Imagen -->
                 <div class="w-28 h-36 bg-gray-100 rounded-lg overflow-hidden border border-gray-200 shrink-0 relative group">
                   <img :src="img.url_imagen" alt="Comprobante" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300">
                   <a :href="img.url_imagen" target="_blank" class="absolute inset-0 bg-zorrilla/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white text-xs font-bold">
@@ -447,7 +460,6 @@
                   </a>
                 </div>
 
-                <!-- Detalle de WhatsApp -->
                 <div class="space-y-2 text-xs flex-1 min-w-0">
                   <div>
                     <p class="text-[10px] text-gray-500 font-semibold uppercase tracking-wider">Remitente:</p>
@@ -466,7 +478,6 @@
                 </div>
               </div>
 
-              <!-- FOOTER DE TARJETA -->
               <div class="px-3 py-2 bg-gray-50 border-t border-gray-100 text-[10px] font-mono text-gray-400 text-right">
                 <span x-text="img.created_at ? new Date(img.created_at).toLocaleString('es-ES') : '-'"></span>
               </div>
@@ -675,6 +686,7 @@
         modalNuevoPar: false,
         nuevoParForm: { orig: '', dest: '', comision: 10 },
         datosImagenesJohn: [],
+        cargandoBinance: false,
 
         // Pares Predeterminados de J. Zorrilla (Nombres exactos)
         paresBaseJZ: [
@@ -740,6 +752,7 @@
           } else if (nombre === 'tasas_mercado') {
             await this.cargarTasasActivas();
             await this.cargarFactores();
+            await this.cargarBorrador(true); // Precarga silenciosa
           } else if (nombre === 'imagenes_john') {
             await this.cargarImagenesJohn();
           } else {
@@ -781,6 +794,25 @@
           }
         },
 
+        // Conexión dinámica a la API Binance P2P
+        async conectarBinance() {
+          this.cargandoBinance = true;
+          try {
+            const res = await fetch('/api/tasas/binance', { method: 'POST' });
+            const data = await res.json();
+            if (data && data.success) {
+              this.borradorTasas = data.rates || {};
+              alert('⚡ Tasas obtenidas directamente desde Binance P2P.');
+            } else {
+              alert('Error conectando con la API de Binance.');
+            }
+          } catch (e) {
+            alert('Error al consultar la API de Binance.');
+          } finally {
+            this.cargandoBinance = false;
+          }
+        },
+
         // Métodos de Tasas y Factores
         async cargarTasasActivas() {
           try {
@@ -793,13 +825,23 @@
           } catch (e) { console.error('Error cargando tasas activas:', e); }
         },
 
-        async cargarBorrador() {
+        async cargarBorrador(silencioso = false) {
           try {
             const res = await fetch('/api/tasas/fetch-hoo');
-            const data = await res.json();
-            if (!data || !data.success) return alert(data.msg || 'Sin borrador pendiente en BD.');
-            this.borradorTasas = data.rates || {};
-          } catch (e) { alert('Error al consultar borrador.'); }
+            if (res.ok) {
+              const data = await res.json();
+              if (data && data.success) {
+                this.borradorTasas = data.rates || {};
+                if (!silencioso) alert('✅ Borrador cargado en pantalla.');
+                return;
+              }
+            }
+            this.borradorTasas = {};
+            if (!silencioso) alert('Sin borrador pendiente en la base de datos.');
+          } catch (e) { 
+            this.borradorTasas = {};
+            if (!silencioso) alert('Error al consultar borrador.'); 
+          }
         },
 
         async publicarTasa() {
