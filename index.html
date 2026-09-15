@@ -337,12 +337,15 @@
           </div>
         </div>
 
-        <!-- BLOQUE: PRODUCCIÓN VS BORRADOR -->
+        <!-- BLOQUE: PRODUCCIÓN VS BORRADOR CON CAMPO CORREO ZELLE -->
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
           <!-- Lote Activo -->
           <div class="bg-white border border-gray-200 rounded-lg p-5 space-y-4 shadow">
             <div class="flex justify-between items-center border-b border-gray-100 pb-3">
-              <h3 class="text-xs font-bold text-emerald-600 uppercase tracking-wider">Lote Activo Producción</h3>
+              <div>
+                <h3 class="text-xs font-bold text-emerald-600 uppercase tracking-wider">Lote Activo Producción</h3>
+                <p class="text-[10px] text-gray-500 font-mono mt-0.5" x-text="'Zelle: ' + correoZelleActivo"></p>
+              </div>
               <span class="text-xs font-extrabold bg-emerald-100 text-emerald-800 px-3 py-1 rounded-full border border-emerald-300" x-text="'Lote: ' + idTasaActiva"></span>
             </div>
             <div class="grid grid-cols-3 gap-3">
@@ -355,14 +358,20 @@
             </div>
           </div>
 
-          <!-- Borrador Pendiente / Previa Capturada -->
+          <!-- Borrador Capturado -->
           <div class="bg-white border border-gray-200 rounded-lg p-5 space-y-4 shadow">
             <div class="flex justify-between items-center border-b border-gray-100 pb-3">
               <h3 class="text-xs font-bold text-amber-600 uppercase tracking-wider">Borrador Capturado (Paso Previo)</h3>
               <span class="text-[10px] text-gray-400">Edición manual previa a publicación</span>
             </div>
 
-            <!-- Cuadrícula con previa de borrador -->
+            <!-- Campo de Edición del Correo Zelle -->
+            <div class="bg-amber-50/60 border border-amber-200 p-2.5 rounded-lg space-y-1">
+              <label class="text-[10px] text-amber-900 font-bold uppercase tracking-wider block">📧 Correo Zelle del Lote</label>
+              <input type="text" x-model="borradorCorreoZelle" placeholder="ej. GM Sports 21 LLC" class="w-full bg-white text-gray-900 font-bold text-xs p-1.5 rounded border border-amber-300 outline-none focus:ring-1 focus:ring-amber-500">
+            </div>
+
+            <!-- Cuadrícula de tasas -->
             <div x-show="Object.keys(borradorTasas).length > 0" class="grid grid-cols-3 gap-3">
               <template x-for="(valor, moneda) in borradorTasas" :key="moneda">
                 <div class="bg-amber-50/50 border border-amber-200 p-2.5 rounded-lg">
@@ -373,8 +382,8 @@
             </div>
 
             <!-- Estado silencioso cuando no hay borrador activo -->
-            <div x-show="Object.keys(borradorTasas).length === 0" class="p-6 text-center text-xs text-gray-400 italic bg-gray-50 rounded-lg border border-dashed border-gray-200">
-              Sin borrador pendiente. Conecta Binance API o presiona <strong class="text-indigo-600 font-semibold">"Traer Borrador n8n"</strong> para pre-cargar cotizaciones.
+            <div x-show="Object.keys(borradorTasas).length === 0" class="p-4 text-center text-xs text-gray-400 italic bg-gray-50 rounded-lg border border-dashed border-gray-200">
+              Sin borrador pendiente. Conecta Binance API o presiona <strong class="text-indigo-600 font-semibold">"Traer Borrador n8n"</strong>.
             </div>
 
             <button @click="publicarTasa()" 
@@ -391,7 +400,7 @@
           <div class="flex justify-between items-center border-b border-gray-100 pb-3">
             <div>
               <h3 class="text-xs font-bold text-indigo-900 uppercase tracking-wider">Comisión por Par (%)</h3>
-              <p class="text-[10px] text-gray-400">Pares oficiales configurados para J. Zorrilla (Valor calculado en verde)</p>
+              <p class="text-[10px] text-gray-400">Pares oficiales configurados para J. Zorrilla (Valor calculated en verde)</p>
             </div>
             <button @click="abrirModalNuevoPar()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs px-3 py-1.5 rounded-lg shadow transition flex items-center gap-1">
               <span>+ Agregar Par</span>
@@ -690,7 +699,9 @@
 
         // Módulo Tasas & Comisiones
         tasasActivas: {}, idTasaActiva: 'T000',
+        correoZelleActivo: 'GM Sports 21 LLC',
         borradorTasas: {},
+        borradorCorreoZelle: 'GM Sports 21 LLC',
         factoresMatriz: {},
         modalNuevoPar: false,
         nuevoParForm: { orig: '', dest: '', comision: 10 },
@@ -890,6 +901,7 @@
             const data = await res.json();
             if (data && data.success) {
               this.borradorTasas = data.rates || {};
+              this.borradorCorreoZelle = data.correo_zelle || 'GM Sports 21 LLC';
               alert('⚡ Tasas obtenidas directamente desde Binance P2P.');
             } else {
               alert('Error conectando con la API de Binance.');
@@ -909,6 +921,7 @@
             if (data && data.success) {
               this.idTasaActiva = data.id_tasa || 'T001';
               this.tasasActivas = data.tasas || {};
+              this.correoZelleActivo = data.correo_zelle || 'GM Sports 21 LLC';
             }
           } catch (e) { console.error('Error cargando tasas activas:', e); }
         },
@@ -920,6 +933,7 @@
               const data = await res.json();
               if (data && data.success) {
                 this.borradorTasas = data.rates || {};
+                this.borradorCorreoZelle = data.correo_zelle || this.correoZelleActivo || 'GM Sports 21 LLC';
                 if (!silencioso) alert('✅ Borrador cargado en pantalla.');
                 return;
               }
@@ -939,7 +953,10 @@
             const res = await fetch('/api/tasas/publicar', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ tasas: this.borradorTasas })
+              body: JSON.stringify({ 
+                tasas: this.borradorTasas,
+                correo_zelle: this.borradorCorreoZelle
+              })
             });
             const data = await res.json();
             alert(data.message);
