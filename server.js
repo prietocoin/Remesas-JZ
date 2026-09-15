@@ -62,7 +62,20 @@ async function initTasasJZ() {
       CREATE INDEX IF NOT EXISTS idx_jz_notificaciones_id_tasa ON jz_notificaciones(id_tasa);
     `);
 
-    // Sembrado inicial de factores
+    // Automigración: recupera lotes creados en jz_mercado_tasas antes de la normalización
+    await pool.query(`
+      INSERT INTO jz_lotes (id_tasa, correo_zelle, timestamp)
+      SELECT 
+        id_tasa, 
+        'GM Sports 21 LLC' AS correo_zelle, 
+        COALESCE(MAX(timestamp), EXTRACT(EPOCH FROM NOW())::bigint) AS timestamp
+      FROM jz_mercado_tasas
+      WHERE id_tasa IS NOT NULL AND id_tasa != ''
+      GROUP BY id_tasa
+      ON CONFLICT (id_tasa) DO NOTHING;
+    `);
+
+    // Sembrado inicial de factores de comisión
     const checkFactores = await pool.query('SELECT COUNT(*) FROM jz_factores_matriz');
     if (parseInt(checkFactores.rows[0].count, 10) === 0) {
       await pool.query(`
@@ -74,7 +87,7 @@ async function initTasasJZ() {
         ('USD', 'COP', 0.8800), ('USD', 'PEN', 0.9000), ('COP', 'PEN', 0.8800);
       `);
     }
-    console.log('✅ [Remesas-JZ] Tablas normalizadas verificadas (jz_lotes + jz_mercado_tasas).');
+    console.log('✅ [Remesas-JZ] Tablas normalizadas y lotes sincronizados con éxito.');
   } catch (err) {
     console.error('❌ Error inicializando tablas de tasas JZ:', err.message);
   }
@@ -253,7 +266,7 @@ app.post('/api/tasas/publicar', async (req, res) => {
     await client.query("DELETE FROM jz_mercado_tasas WHERE id_tasa = 'BORRADOR';");
     await client.query("DELETE FROM jz_lotes WHERE id_tasa = 'BORRADOR';");
     
-    // Inserción única en jz_notificaciones
+    // Inserción única en jz_notificaciones para disparar n8n
     await client.query(
       `INSERT INTO jz_notificaciones (id_tasa, estado) VALUES ($1, 'PENDIENTE');`,
       [idTasaOficial]
