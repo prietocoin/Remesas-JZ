@@ -91,7 +91,6 @@
         Imágenes JOHN
       </button>
 
-      <!-- BOTÓN CORREGIDO: Llama a la tabla 'directorio' que contiene la data -->
       <button @click="cambiarTabla('directorio')" :class="tablaActiva === 'directorio' ? 'bg-indigo-600 text-white shadow' : 'text-blue-200 hover:bg-white/10 hover:text-white'" class="w-full flex items-center gap-3 p-2.5 rounded-lg font-semibold text-sm transition-all">
         <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 9h3.75M15 12h3.75M15 15h3.75M4.5 19.5h15a2.25 2.25 0 002.25-2.25V6.75A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25v10.5A2.25 2.25 0 004.5 19.5zm6-10.125a1.875 1.875 0 11-3.75 0 1.875 1.875 0 013.75 0zm1.294 6.336a6.721 6.721 0 01-3.17.789 6.721 6.721 0 01-3.168-.789 3.376 3.376 0 016.338 0z" /></svg>
         Directorio (Nombres)
@@ -698,7 +697,6 @@
         datosPares: [],
         datosGenericos: [], columnasGenericas: [],
 
-        // Módulo Tasas & Comisiones
         tasasActivas: {}, idTasaActiva: 'T000',
         correoZelleActivo: 'GM Sports 21 LLC',
         borradorTasas: {},
@@ -709,7 +707,6 @@
         datosImagenesJohn: [],
         cargandoBinance: false,
 
-        // Pares Predeterminados de J. Zorrilla
         paresBaseJZ: [
           { key: 'USD_VES', orig: 'USD', dest: 'VES', label: 'USD ➔ VES' },
           { key: 'PEN_VES', orig: 'PEN', dest: 'VES', label: 'PEN ➔ VES' },
@@ -737,7 +734,6 @@
         sortCol: 'id', sortAsc: false,
         formEdit: { id: null, monto: 0, estado: '', titular: '', moneda: '', tasa: '', banco: '', fecha_hora: '', timestamp: '', hiperlink: '', hash_corto: '', tipo_operacion: '' },
 
-        // Helper para peticiones HTTP a prueba de congelamiento (Timeout 4s)
         async fetchConTimeout(resource, options = {}) {
           const { timeout = 4000 } = options;
           const controller = new AbortController();
@@ -753,7 +749,6 @@
         },
 
         init() {
-          // Oculta el preloader automáticamente tras 800ms
           setTimeout(() => {
             const preloader = document.getElementById('preloader');
             if (preloader) {
