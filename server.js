@@ -24,46 +24,7 @@ pool.on('error', (err) => {
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'index.html'));
 });
-app.get('/api/raw-imagenes', async (req, res) => {
-  try {
-    const { rows } = await pool.query(
-      `SELECT hash_largo, hash_corto, grupo_raw, usuario_raw, nombre_push, caption, url_imagen, COALESCE(conteo, 1) AS conteo, estado, instancia, timestamp_msg
-       FROM registros_raw 
-       WHERE url_imagen IS NOT NULL AND TRIM(url_imagen) != '' 
-       ORDER BY timestamp_msg DESC LIMIT 60`
-    );
 
-    const normalized = rows.map((r, index) => {
-      // Conversión de timestamp_msg (segundos/milisegundos) a fecha legible
-      let fecha = new Date();
-      if (r.timestamp_msg) {
-        let ts = Number(r.timestamp_msg);
-        if (ts < 1e11) ts *= 1000;
-        fecha = new Date(ts);
-      }
-
-      return {
-        id: r.hash_corto || r.hash_largo || index + 1,
-        hash_largo: r.hash_largo || '',
-        hash_corto: r.hash_corto || 'Sin Hash',
-        grupo_raw: r.grupo_raw || 'Chat Directo',
-        usuario_raw: r.usuario_raw || 'Cliente',
-        nombre_push: r.nombre_push || r.usuario_raw || 'Desconocido',
-        caption: r.caption || 'Sin texto...',
-        url_imagen: r.url_imagen,
-        conteo: r.conteo || 1,
-        estado: r.estado || 'PROCESADO',
-        instancia: r.instancia || 'JOHN',
-        created_at: fecha.toISOString()
-      };
-    });
-
-    res.json({ success: true, count: normalized.length, rows: normalized });
-  } catch (err) {
-    console.error('❌ Error en /api/raw-imagenes:', err.message);
-    res.status(500).json({ success: false, error: err.message });
-  }
-});
 // ==========================================
 // MÓDULO TASAS & FACTORES - REMESAS JZ
 // ==========================================
@@ -99,6 +60,18 @@ async function initTasasJZ() {
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
 
+      CREATE TABLE IF NOT EXISTS directorio (
+        id_grupo VARCHAR(50) PRIMARY KEY,
+        nombre VARCHAR(100) NOT NULL,
+        roles VARCHAR(50),
+        moneda_socio VARCHAR(10),
+        grupo VARCHAR(255),
+        porcentaje_comision VARCHAR(20),
+        descuento VARCHAR(50),
+        creado_en TIMESTAMP WITH TIME ZONE,
+        moneda_base VARCHAR(10)
+      );
+
       CREATE INDEX IF NOT EXISTS idx_jz_mercado_tasas_id ON jz_mercado_tasas(id_tasa);
       CREATE INDEX IF NOT EXISTS idx_jz_notificaciones_id_tasa ON jz_notificaciones(id_tasa);
     `);
@@ -128,13 +101,78 @@ async function initTasasJZ() {
         ('USD', 'COP', 0.8800), ('USD', 'PEN', 0.9000), ('COP', 'PEN', 0.8800);
       `);
     }
-    console.log('✅ [Remesas-JZ] Tablas verificadas correctamente.');
+    console.log('✅ [Remesas-JZ] Tablas verificadas e inicializadas correctamente.');
   } catch (err) {
     console.error('❌ Error inicializando tablas de tasas JZ:', err.message);
   }
 }
 initTasasJZ();
 
+// 1. BÚSQUEDA DE IMÁGENES RAW CORREGIDA (Usa timestamp_msg y estructura real de registros_raw)
+app.get('/api/raw-imagenes', async (req, res) => {
+  try {
+    let rows = [];
+
+    const rawRes = await pool.query(`
+      SELECT hash_largo, hash_corto, grupo_raw, usuario_raw, nombre_push, caption, 
+             url_imagen, COALESCE(conteo, 1) AS conteo, estado, instancia, timestamp_msg
+      FROM registros_raw 
+      WHERE url_imagen IS NOT NULL AND TRIM(CAST(url_imagen AS text)) != ''
+      ORDER BY timestamp_msg DESC LIMIT 60
+    `).catch(err => {
+      console.warn('⚠️ Fallo consulta en registros_raw:', err.message);
+      return { rows: [] };
+    });
+
+    rows = rawRes.rows || [];
+
+    // Fallback secundario a la tabla registros si registros_raw no tiene imágenes
+    if (rows.length === 0) {
+      const regFallback = await pool.query(`
+        SELECT id, hash_corto, nombre_asesor AS nombre_push, titular AS usuario_raw, 
+               banco AS grupo_raw, monto::text AS caption, hiperlink AS url_imagen, 
+               estado_proceso AS estado, created_at 
+        FROM registros 
+        WHERE hiperlink IS NOT NULL AND TRIM(CAST(hiperlink AS text)) != '' 
+        ORDER BY id DESC LIMIT 60
+      `).catch(() => ({ rows: [] }));
+      rows = regFallback.rows || [];
+    }
+
+    const normalized = rows.map((r, idx) => {
+      let fecha = new Date();
+      if (r.created_at) {
+        fecha = new Date(r.created_at);
+      } else if (r.timestamp_msg) {
+        let ts = Number(r.timestamp_msg);
+        if (ts < 1e11) ts *= 1000;
+        fecha = new Date(ts);
+      }
+
+      return {
+        id: r.id || r.hash_corto || r.hash_largo || (idx + 1),
+        hash_largo: r.hash_largo || '',
+        hash_corto: r.hash_corto || 'Sin Hash',
+        grupo_raw: r.grupo_raw || 'Chat Directo',
+        usuario_raw: r.usuario_raw || 'Cliente',
+        nombre_push: r.nombre_push || r.usuario_raw || 'Desconocido',
+        caption: r.caption || 'Sin texto...',
+        url_imagen: r.url_imagen || '',
+        conteo: r.conteo || 1,
+        estado: r.estado || 'PROCESADO',
+        instancia: r.instancia || 'JOHN',
+        created_at: fecha.toISOString()
+      };
+    });
+
+    res.json({ success: true, count: normalized.length, rows: normalized });
+  } catch (err) {
+    console.error('❌ Error en /api/raw-imagenes:', err.message);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// 2. Lectura de tasa activa en producción
 app.get('/api/tasas/ultimas', async (req, res) => {
   try {
     const lastLot = await pool.query(
@@ -157,6 +195,7 @@ app.get('/api/tasas/ultimas', async (req, res) => {
   }
 });
 
+// 3. Consulta en vivo desde Binance P2P API
 app.post('/api/tasas/binance', async (req, res) => {
   const client = await pool.connect();
   try {
@@ -226,6 +265,7 @@ app.post('/api/tasas/binance', async (req, res) => {
   }
 });
 
+// 4. Webhook de n8n
 app.post('/api/tasas/n8n-webhook', async (req, res) => {
   const client = await pool.connect();
   try {
@@ -262,6 +302,7 @@ app.post('/api/tasas/n8n-webhook', async (req, res) => {
   }
 });
 
+// 5. Obtener borrador pendiente
 app.get('/api/tasas/fetch-hoo', async (req, res) => {
   try {
     const lot = await pool.query(`SELECT correo_zelle FROM jz_lotes WHERE id_tasa = 'BORRADOR';`);
@@ -277,6 +318,7 @@ app.get('/api/tasas/fetch-hoo', async (req, res) => {
   }
 });
 
+// 6. Promocionar borrador a lote oficial
 app.post('/api/tasas/publicar', async (req, res) => {
   const client = await pool.connect();
   try {
@@ -327,6 +369,7 @@ app.post('/api/tasas/publicar', async (req, res) => {
   }
 });
 
+// 7. Matriz de factores
 app.get('/api/tasas/factores', async (req, res) => {
   try {
     const resBD = await pool.query('SELECT moneda_origen, moneda_destino, factor FROM jz_factores_matriz;');
@@ -367,60 +410,6 @@ app.post('/api/tasas/factores', async (req, res) => {
   }
 });
 
-// 🔥 BÚSQUEDA DE IMÁGENES RAW CORREGIDA (Filtra en SQL ANTES del LIMIT 60)
-app.get('/api/raw-imagenes', async (req, res) => {
-  try {
-    // 1. Filtro estricto en SQL para asegurar traer registros que SÍ tengan imagen
-    let rawRes = await pool.query(`
-      SELECT * FROM registros_raw 
-      WHERE (url_imagen IS NOT NULL AND TRIM(CAST(url_imagen AS text)) != '')
-         OR (hiperlink IS NOT NULL AND TRIM(CAST(hiperlink AS text)) != '')
-      ORDER BY id DESC LIMIT 60
-    `).catch(() => ({ rows: [] }));
-
-    let rows = rawRes.rows || [];
-
-    // 2. Si registros_raw está vacía, fallback a la tabla registros
-    if (rows.length === 0) {
-      const regFallback = await pool.query(`
-        SELECT id, hash_corto, nombre_asesor AS nombre_push, titular AS usuario_raw, 
-               banco AS grupo_raw, monto::text AS caption, hiperlink AS url_imagen, 
-               estado_proceso AS estado, created_at 
-        FROM registros 
-        WHERE hiperlink IS NOT NULL AND TRIM(CAST(hiperlink AS text)) != '' 
-        ORDER BY id DESC LIMIT 60
-      `).catch(() => ({ rows: [] }));
-      rows = regFallback.rows || [];
-    }
-
-    const normalized = rows.map((r) => {
-      const url = r.url_imagen || r.hiperlink || r.url || r.media_url || r.link || '';
-      const hashLargo = r.hash_largo || r.hash || '';
-      const hashCorto = r.hash_corto || (hashLargo ? hashLargo.substring(0, 12) : '') || `#${r.id}`;
-
-      return {
-        id: r.id,
-        hash_largo: hashLargo,
-        hash_corto: hashCorto,
-        grupo_raw: r.grupo_raw || r.grupo || r.chat_jid || 'Chat Directo',
-        usuario_raw: r.usuario_raw || r.usuario || r.titular || 'Cliente',
-        nombre_push: r.nombre_push || r.push_name || r.nombre_asesor || r.usuario_raw || 'Desconocido',
-        caption: r.caption || r.texto || (r.monto ? `$${r.monto}` : 'Sin texto...'),
-        url_imagen: url,
-        conteo: r.conteo || 1,
-        estado: r.estado || r.estado_proceso || 'PROCESADO',
-        instancia: r.instancia || 'JOHN',
-        created_at: r.created_at || new Date()
-      };
-    });
-
-    res.json({ success: true, count: normalized.length, rows: normalized });
-  } catch (err) {
-    console.error('❌ Error en /api/raw-imagenes:', err.message);
-    res.status(500).json({ success: false, error: err.message });
-  }
-});
-
 app.get('/api/asesores', async (req, res) => {
   try {
     const { rows } = await pool.query("SELECT DISTINCT nombre_asesor FROM registros WHERE nombre_asesor IS NOT NULL AND nombre_asesor != '' ORDER BY nombre_asesor");
@@ -457,7 +446,7 @@ app.get('/api/remesas', async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// 🔥 CONSULTA TABLAS (Incluye 'directorio')
+// 8. CONSULTA TABLAS (Incluye 'directorio')
 app.get('/api/tabla/:nombre', async (req, res) => {
   const tablasPermitidas = [
     'registros', 'registros_raw', 'comprobantes_test', 'cola_recepcion', 
