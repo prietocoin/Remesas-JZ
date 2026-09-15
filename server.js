@@ -128,17 +128,28 @@ app.post('/api/tasas/binance', async (req, res) => {
       try {
         const response = await fetch('https://p2p.binance.com/bapi/c2c/v2/friendly/c2c/adv/search', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: {
+            'Content-Type': 'application/json',
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+            'Accept': '*/*',
+            'ClientType': 'web',
+            'Cache-Control': 'no-cache'
+          },
           body: JSON.stringify({ page: 1, rows: 5, asset: 'USDT', fiat: fiat, tradeType: 'BUY' })
         });
-        const data = await response.json();
-        if (data && data.data && data.data.length > 0) {
-          const precios = data.data.slice(0, 3).map(adv => parseFloat(adv.adv.price));
-          const promedio = precios.reduce((a, b) => a + b, 0) / precios.length;
-          ratesObj[fiat] = Number(promedio.toFixed(2));
+
+        if (response.ok) {
+          const data = await response.json();
+          if (data && data.data && data.data.length > 0) {
+            const precios = data.data.slice(0, 3).map(adv => parseFloat(adv.adv.price));
+            const promedio = precios.reduce((a, b) => a + b, 0) / precios.length;
+            ratesObj[fiat] = Number(promedio.toFixed(2));
+          }
+        } else {
+          console.warn(`⚠️ Binance P2P no respondió OK para ${fiat}: HTTP ${response.status}`);
         }
       } catch (e) {
-        console.error(`Error consultando Binance P2P (${fiat}):`, e.message);
+        console.error(`❌ Error consultando Binance P2P (${fiat}):`, e.message);
       }
     }
 
