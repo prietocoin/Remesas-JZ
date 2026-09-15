@@ -37,16 +37,28 @@ async function initTasasJZ() {
         id_tasa VARCHAR(20) NOT NULL,
         moneda VARCHAR(10) NOT NULL,
         tasa_base NUMERIC(18, 6) NOT NULL,
+        correo_zelle VARCHAR(255) DEFAULT 'GM Sports 21 LLC',
         timestamp BIGINT NOT NULL,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
+      ALTER TABLE jz_mercado_tasas ADD COLUMN IF NOT EXISTS correo_zelle VARCHAR(255) DEFAULT 'GM Sports 21 LLC';
+
       CREATE TABLE IF NOT EXISTS jz_factores_matriz (
         moneda_origen VARCHAR(10) NOT NULL,
         moneda_destino VARCHAR(10) NOT NULL,
         factor NUMERIC(6, 4) NOT NULL DEFAULT 0.9000,
         PRIMARY KEY (moneda_origen, moneda_destino)
       );
+
+      CREATE TABLE IF NOT EXISTS jz_notificaciones (
+        id SERIAL PRIMARY KEY,
+        id_tasa VARCHAR(20) NOT NULL,
+        estado VARCHAR(20) DEFAULT 'PENDIENTE',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+
       CREATE INDEX IF NOT EXISTS idx_jz_mercado_tasas_id ON jz_mercado_tasas(id_tasa);
+      CREATE INDEX IF NOT EXISTS idx_jz_notificaciones_id_tasa ON jz_notificaciones(id_tasa);
     `);
 
     // Sembrado automático de la semilla inicial de factores de GSheet
@@ -72,7 +84,7 @@ async function initTasasJZ() {
       `);
       console.log('🌱 [Remesas-JZ] Factores/Comisiones iniciales sembrados con éxito.');
     } else {
-      console.log('✅ [Remesas-JZ] Tablas jz_mercado_tasas y jz_factores_matriz verificadas.');
+      console.log('✅ [Remesas-JZ] Tablas jz_mercado_tasas, jz_factores_matriz y jz_notificaciones verificadas.');
     }
   } catch (err) {
     console.error('❌ Error inicializando tablas de tasas JZ:', err.message);
@@ -87,14 +99,18 @@ app.get('/api/tasas/ultimas', async (req, res) => {
       `SELECT id_tasa FROM jz_mercado_tasas WHERE id_tasa != 'BORRADOR' ORDER BY timestamp DESC, id DESC LIMIT 1;`
     );
     if (lastLot.rows.length === 0) {
-      return res.json({ success: true, id_tasa: 'T001', tasas: { USD: 1.0, USDT: 1.0 } });
+      return res.json({ success: true, id_tasa: 'T001', tasas: { USD: 1.0, USDT: 1.0 }, correo_zelle: 'GM Sports 21 LLC' });
     }
     
     const idTasa = lastLot.rows[0].id_tasa;
-    const rates = await pool.query(`SELECT moneda, tasa_base FROM jz_mercado_tasas WHERE id_tasa = $1;`, [idTasa]);
+    const rates = await pool.query(`SELECT moneda, tasa_base, correo_zelle FROM jz_mercado_tasas WHERE id_tasa = $1;`, [idTasa]);
     const tasasObj = { USD: 1.0, USDT: 1.0 };
-    rates.rows.forEach(r => { tasasObj[r.moneda.toUpperCase()] = parseFloat(r.tasa_base); });
-    res.json({ success: true, id_tasa: idTasa, tasas: tasasObj });
+    let correoZelle = 'GM Sports 21 LLC';
+    rates.rows.forEach(r => { 
+      tasasObj[r.moneda.toUpperCase()] = parseFloat(r.tasa_base);
+      if (r.correo_zelle) correoZelle = r.correo_zelle;
+    });
+    res.json({ success: true, id_tasa: idTasa, tasas: tasasObj, correo_zelle: correoZelle });
   } catch (err) { 
     res.status(500).json({ success: false, error: err.message }); 
   }
@@ -131,7 +147,6 @@ app.post('/api/tasas/binance', async (req, res) => {
       }
     }
 
-    // Mapeos de compatibilidad JZ
     if (ratesObj['EUR']) ratesObj['ESP'] = ratesObj['EUR'];
     ratesObj['PYP'] = ratesObj['VES'] ? Number((ratesObj['VES'] * 0.82).toFixed(2)) : 790.00;
 
@@ -143,14 +158,14 @@ app.post('/api/tasas/binance', async (req, res) => {
     for (const [moneda, valor] of Object.entries(ratesObj)) {
       if (!isNaN(valor)) {
         await client.query(
-          `INSERT INTO jz_mercado_tasas (id_tasa, moneda, tasa_base, timestamp) VALUES ('BORRADOR', $1, $2, $3);`, 
+          `INSERT INTO jz_mercado_tasas (id_tasa, moneda, tasa_base, correo_zelle, timestamp) VALUES ('BORRADOR', $1, $2, 'GM Sports 21 LLC', $3);`, 
           [moneda.toUpperCase(), valor, timestamp]
         );
       }
     }
     await client.query('COMMIT');
 
-    res.json({ success: true, message: 'Borrador cargado desde Binance API.', rates: ratesObj });
+    res.json({ success: true, message: 'Borrador cargado desde Binance API.', rates: ratesObj, correo_zelle: 'GM Sports 21 LLC' });
   } catch (err) {
     await client.query('ROLLBACK');
     res.status(500).json({ success: false, error: err.message });
@@ -165,6 +180,7 @@ app.post('/api/tasas/n8n-webhook', async (req, res) => {
   try {
     let payload = Array.isArray(req.body) ? req.body[0] : req.body;
     let rates = (payload && (payload.rates || payload.json || payload)) || {};
+    let correoZelle = (payload && (payload.correo_zelle || payload.correoZelle)) || 'GM Sports 21 LLC';
     const timestamp = Math.floor(Date.now() / 1000);
 
     await client.query('BEGIN');
@@ -174,8 +190,8 @@ app.post('/api/tasas/n8n-webhook', async (req, res) => {
       const numValor = parseFloat(valor);
       if (!isNaN(numValor)) {
         await client.query(
-          `INSERT INTO jz_mercado_tasas (id_tasa, moneda, tasa_base, timestamp) VALUES ('BORRADOR', $1, $2, $3);`, 
-          [moneda.toUpperCase(), numValor, timestamp]
+          `INSERT INTO jz_mercado_tasas (id_tasa, moneda, tasa_base, correo_zelle, timestamp) VALUES ('BORRADOR', $1, $2, $3, $4);`, 
+          [moneda.toUpperCase(), numValor, correoZelle, timestamp]
         );
       }
     }
@@ -192,21 +208,26 @@ app.post('/api/tasas/n8n-webhook', async (req, res) => {
 // 4. Obtener borrador pendiente
 app.get('/api/tasas/fetch-hoo', async (req, res) => {
   try {
-    const rates = await pool.query(`SELECT moneda, tasa_base FROM jz_mercado_tasas WHERE id_tasa = 'BORRADOR';`);
+    const rates = await pool.query(`SELECT moneda, tasa_base, correo_zelle FROM jz_mercado_tasas WHERE id_tasa = 'BORRADOR';`);
     if (rates.rows.length === 0) return res.status(404).json({ success: false, msg: 'Sin borrador pendiente.' });
     const ratesObj = {};
-    rates.rows.forEach(r => { ratesObj[r.moneda.toUpperCase()] = parseFloat(r.tasa_base); });
-    res.json({ success: true, rates: ratesObj });
+    let correoZelle = 'GM Sports 21 LLC';
+    rates.rows.forEach(r => { 
+      ratesObj[r.moneda.toUpperCase()] = parseFloat(r.tasa_base);
+      if (r.correo_zelle) correoZelle = r.correo_zelle;
+    });
+    res.json({ success: true, rates: ratesObj, correo_zelle: correoZelle });
   } catch (err) { 
     res.status(500).json({ success: false, error: err.message }); 
   }
 });
 
-// 5. Promocionar borrador a lote oficial
+// 5. Promocionar borrador a lote oficial y notificar a n8n
 app.post('/api/tasas/publicar', async (req, res) => {
   const client = await pool.connect();
   try {
     const tasas = req.body.tasas || {};
+    const correoZelle = req.body.correo_zelle || 'GM Sports 21 LLC';
     const timestamp = Math.floor(Date.now() / 1000);
 
     await client.query('BEGIN');
@@ -223,11 +244,18 @@ app.post('/api/tasas/publicar', async (req, res) => {
 
     for (const [moneda, valor] of Object.entries(tasas)) {
       await client.query(
-        `INSERT INTO jz_mercado_tasas (id_tasa, moneda, tasa_base, timestamp) VALUES ($1, $2, $3, $4);`, 
-        [idTasaOficial, moneda.toUpperCase(), parseFloat(valor), timestamp]
+        `INSERT INTO jz_mercado_tasas (id_tasa, moneda, tasa_base, correo_zelle, timestamp) VALUES ($1, $2, $3, $4, $5);`, 
+        [idTasaOficial, moneda.toUpperCase(), parseFloat(valor), correoZelle, timestamp]
       );
     }
     await client.query("DELETE FROM jz_mercado_tasas WHERE id_tasa = 'BORRADOR';");
+    
+    // Inserción única en jz_notificaciones para despertar a n8n sin ráfagas
+    await client.query(
+      `INSERT INTO jz_notificaciones (id_tasa, estado) VALUES ($1, 'PENDIENTE');`,
+      [idTasaOficial]
+    );
+
     await client.query('COMMIT');
 
     res.json({ success: true, message: `Lote ${idTasaOficial} publicado con éxito para JZ.` });
@@ -402,6 +430,7 @@ app.get('/api/tabla/:nombre', async (req, res) => {
     'vista_pares', 
     'jz_mercado_tasas', 
     'jz_factores_matriz',
+    'jz_notificaciones',
     't_nombres'
   ];
   const tabla = req.params.nombre;
