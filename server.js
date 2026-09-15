@@ -48,12 +48,36 @@ async function initTasasJZ() {
       );
       CREATE INDEX IF NOT EXISTS idx_jz_mercado_tasas_id ON jz_mercado_tasas(id_tasa);
     `);
-    console.log('✅ [Remesas-JZ] Tablas jz_mercado_tasas y jz_factores_matriz verificadas.');
+
+    // Sembrado automático de la semilla inicial de factores de GSheet
+    const checkFactores = await pool.query('SELECT COUNT(*) FROM jz_factores_matriz');
+    if (parseInt(checkFactores.rows[0].count, 10) === 0) {
+      await pool.query(`
+        INSERT INTO jz_factores_matriz (moneda_origen, moneda_destino, factor) VALUES
+        ('USD', 'VES', 0.9000),
+        ('PEN', 'VES', 0.9350),
+        ('PEN', 'COP', 0.9200),
+        ('COP', 'VES', 0.9000),
+        ('MXN', 'VES', 0.8500),
+        ('PYP', 'VES', 0.9400),
+        ('ESP', 'VES', 0.9400),
+        ('BIZ', 'VES', 0.9100),
+        ('ARS', 'VES', 0.9000),
+        ('VES', 'COP', 0.9400),
+        ('VES', 'PEN', 0.9400),
+        ('PEN', 'CLP', 0.8700),
+        ('USD', 'COP', 0.8800),
+        ('USD', 'PEN', 0.9000),
+        ('COP', 'PEN', 0.8800);
+      `);
+      console.log('🌱 [Remesas-JZ] Factores/Comisiones iniciales sembrados con éxito.');
+    } else {
+      console.log('✅ [Remesas-JZ] Tablas jz_mercado_tasas y jz_factores_matriz verificadas.');
+    }
   } catch (err) {
     console.error('❌ Error inicializando tablas de tasas JZ:', err.message);
   }
 }
-initTasasJZ();
 
 // 1. Lectura de tasa activa en producción (Aislada para JZ)
 app.get('/api/tasas/ultimas', async (req, res) => {
