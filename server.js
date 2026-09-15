@@ -336,18 +336,38 @@ app.post('/api/tasas/factores', async (req, res) => {
   }
 });
 
-// 🔥 ENDPOINT CORREGIDO: Carga directa de imágenes RAW sin filtro excluyente
+// 🔥 ENDPOINT ULTRA-ROBUSTO: Consulta abierta con normalización de esquema en JS
 app.get('/api/raw-imagenes', async (req, res) => {
   try {
-    const { rows } = await pool.query(
-      `SELECT id, hash_largo, hash_corto, grupo_raw, usuario_raw, nombre_push, caption, url_imagen, COALESCE(conteo, 1) AS conteo, estado, instancia, created_at
-       FROM registros_raw 
-       WHERE url_imagen IS NOT NULL AND TRIM(CAST(url_imagen AS text)) != '' 
-       ORDER BY id DESC LIMIT 60`
-    );
-    res.json({ success: true, count: rows.length, rows });
-  } catch (err) { 
-    res.status(500).json({ success: false, error: err.message }); 
+    const { rows } = await pool.query(`SELECT * FROM registros_raw ORDER BY id DESC LIMIT 100`);
+
+    const normalized = rows
+      .map((r) => {
+        const url = r.url_imagen || r.url || r.imagen_url || r.media_url || r.link || '';
+        const hashLargo = r.hash_largo || r.hash || '';
+        const hashCorto = r.hash_corto || (hashLargo ? hashLargo.substring(0, 12) : '') || `#${r.id}`;
+
+        return {
+          id: r.id,
+          hash_largo: hashLargo,
+          hash_corto: hashCorto,
+          grupo_raw: r.grupo_raw || r.grupo || r.chat_jid || r.jid || '',
+          usuario_raw: r.usuario_raw || r.usuario || r.sender || '',
+          nombre_push: r.nombre_push || r.push_name || r.nombre || r.usuario_raw || '',
+          caption: r.caption || r.texto || r.message || '',
+          url_imagen: url,
+          conteo: r.conteo || r.count || 1,
+          estado: r.estado || 'PROCESADO',
+          instancia: r.instancia || 'JOHN',
+          created_at: r.created_at || r.fecha || new Date()
+        };
+      })
+      .filter((r) => r.url_imagen && String(r.url_imagen).trim() !== '');
+
+    res.json({ success: true, count: normalized.length, rows: normalized });
+  } catch (err) {
+    console.error('❌ Error en /api/raw-imagenes:', err.message);
+    res.status(500).json({ success: false, error: err.message });
   }
 });
 
