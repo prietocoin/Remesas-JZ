@@ -24,7 +24,46 @@ pool.on('error', (err) => {
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'index.html'));
 });
+app.get('/api/raw-imagenes', async (req, res) => {
+  try {
+    const { rows } = await pool.query(
+      `SELECT hash_largo, hash_corto, grupo_raw, usuario_raw, nombre_push, caption, url_imagen, COALESCE(conteo, 1) AS conteo, estado, instancia, timestamp_msg
+       FROM registros_raw 
+       WHERE url_imagen IS NOT NULL AND TRIM(url_imagen) != '' 
+       ORDER BY timestamp_msg DESC LIMIT 60`
+    );
 
+    const normalized = rows.map((r, index) => {
+      // Conversión de timestamp_msg (segundos/milisegundos) a fecha legible
+      let fecha = new Date();
+      if (r.timestamp_msg) {
+        let ts = Number(r.timestamp_msg);
+        if (ts < 1e11) ts *= 1000;
+        fecha = new Date(ts);
+      }
+
+      return {
+        id: r.hash_corto || r.hash_largo || index + 1,
+        hash_largo: r.hash_largo || '',
+        hash_corto: r.hash_corto || 'Sin Hash',
+        grupo_raw: r.grupo_raw || 'Chat Directo',
+        usuario_raw: r.usuario_raw || 'Cliente',
+        nombre_push: r.nombre_push || r.usuario_raw || 'Desconocido',
+        caption: r.caption || 'Sin texto...',
+        url_imagen: r.url_imagen,
+        conteo: r.conteo || 1,
+        estado: r.estado || 'PROCESADO',
+        instancia: r.instancia || 'JOHN',
+        created_at: fecha.toISOString()
+      };
+    });
+
+    res.json({ success: true, count: normalized.length, rows: normalized });
+  } catch (err) {
+    console.error('❌ Error en /api/raw-imagenes:', err.message);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
 // ==========================================
 // MÓDULO TASAS & FACTORES - REMESAS JZ
 // ==========================================
