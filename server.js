@@ -334,47 +334,52 @@ app.post('/api/tasas/factores', async (req, res) => {
   }
 });
 
-// 7. BÚSQUEDA DE IMÁGENES RAW (Ultra-Rápida con fallback)
+// 🔥 7. BÚSQUEDA DE IMÁGENES RAW ULTRA-TOLERANTE
 app.get('/api/raw-imagenes', async (req, res) => {
   try {
-    let rawResult = await pool.query(`
-      SELECT id, hash_largo, hash_corto, grupo_raw, usuario_raw, nombre_push, caption, url_imagen, COALESCE(conteo, 1) AS conteo, estado, instancia, created_at
-      FROM registros_raw 
-      WHERE url_imagen IS NOT NULL AND TRIM(CAST(url_imagen AS text)) != '' 
-      ORDER BY id DESC LIMIT 60
-    `).catch(() => ({ rows: [] }));
+    let rows = [];
 
-    let rows = rawResult.rows || [];
+    // Intento 1: Leer de registros_raw
+    try {
+      const rawRes = await pool.query(`SELECT * FROM registros_raw ORDER BY id DESC LIMIT 60`);
+      rows = rawRes.rows || [];
+    } catch (e) {
+      console.warn('⚠️ No se pudo consultar registros_raw:', e.message);
+    }
 
-    // Fallback a la tabla registros si registros_raw no devuelve filas
-    if (rows.length === 0) {
+    // Intento 2: Fallback a registros si registros_raw está vacía
+    const processRows = (list) => list.map((r) => {
+      const url = r.url_imagen || r.url || r.imagen_url || r.hiperlink || r.link || r.media_url || '';
+      return {
+        id: r.id,
+        hash_largo: r.hash_largo || r.hash || '',
+        hash_corto: r.hash_corto || `#${r.id}`,
+        grupo_raw: r.grupo_raw || r.grupo || r.chat_jid || r.banco || 'Chat Directo',
+        usuario_raw: r.usuario_raw || r.usuario || r.titular || 'Cliente',
+        nombre_push: r.nombre_push || r.push_name || r.nombre_asesor || r.nombre || 'Desconocido',
+        caption: r.caption || r.texto || r.monto || 'Sin texto...',
+        url_imagen: url,
+        conteo: r.conteo || 1,
+        estado: r.estado || r.estado_proceso || 'PROCESADO',
+        instancia: r.instancia || 'JOHN',
+        created_at: r.created_at || new Date()
+      };
+    }).filter(r => r.url_imagen && String(r.url_imagen).trim() !== '');
+
+    let normalized = processRows(rows);
+
+    if (normalized.length === 0) {
       const regFallback = await pool.query(`
-        SELECT id, hash_corto, nombre_asesor AS nombre_push, titular AS usuario_raw, banco AS grupo_raw, 
-               monto::text AS caption, hiperlink AS url_imagen, estado_proceso AS estado, created_at 
-        FROM registros 
+        SELECT * FROM registros 
         WHERE hiperlink IS NOT NULL AND TRIM(hiperlink) != '' 
         ORDER BY id DESC LIMIT 60
       `).catch(() => ({ rows: [] }));
-      rows = regFallback.rows || [];
+      normalized = processRows(regFallback.rows || []);
     }
-
-    const normalized = rows.map((r) => ({
-      id: r.id,
-      hash_largo: r.hash_largo || r.hash || '',
-      hash_corto: r.hash_corto || `#${r.id}`,
-      grupo_raw: r.grupo_raw || 'Chat Directo',
-      usuario_raw: r.usuario_raw || 'Cliente',
-      nombre_push: r.nombre_push || r.usuario_raw || 'Desconocido',
-      caption: r.caption || 'Sin texto...',
-      url_imagen: r.url_imagen || r.hiperlink || '',
-      conteo: r.conteo || 1,
-      estado: r.estado || 'PROCESADO',
-      instancia: r.instancia || 'JOHN',
-      created_at: r.created_at || new Date()
-    }));
 
     res.json({ success: true, count: normalized.length, rows: normalized });
   } catch (err) {
+    console.error('❌ Error en /api/raw-imagenes:', err.message);
     res.status(500).json({ success: false, error: err.message });
   }
 });
@@ -415,8 +420,13 @@ app.get('/api/remesas', async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
+// 🔥 8. ENDPOINT CONSULTA TABLAS (INCLUYE 'directorio')
 app.get('/api/tabla/:nombre', async (req, res) => {
-  const tablasPermitidas = ['registros', 'registros_raw', 'comprobantes_test', 'cola_recepcion', 'vista_pares', 'jz_lotes', 'jz_mercado_tasas', 'jz_factores_matriz', 'jz_notificaciones', 't_nombres'];
+  const tablasPermitidas = [
+    'registros', 'registros_raw', 'comprobantes_test', 'cola_recepcion', 
+    'vista_pares', 'jz_lotes', 'jz_mercado_tasas', 'jz_factores_matriz', 
+    'jz_notificaciones', 't_nombres', 'directorio'
+  ];
   const tabla = req.params.nombre;
   if (!tablasPermitidas.includes(tabla)) return res.status(403).json({ error: 'Tabla no autorizada' });
   try {
