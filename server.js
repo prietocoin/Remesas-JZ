@@ -117,7 +117,7 @@ app.get('/api/tasas/ultimas', async (req, res) => {
   }
 });
 
-// 2. Consulta en vivo desde Binance P2P API (Guarda BORRADOR)
+// 2. Consulta en vivo desde Binance P2P API con cabeceras de navegación antibloqueo
 app.post('/api/tasas/binance', async (req, res) => {
   const client = await pool.connect();
   try {
@@ -130,9 +130,12 @@ app.post('/api/tasas/binance', async (req, res) => {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36',
             'Accept': '*/*',
+            'Accept-Language': 'es-ES,es;q=0.9,en;q=0.8',
             'ClientType': 'web',
+            'Origin': 'https://p2p.binance.com',
+            'Referer': `https://p2p.binance.com/es/trade/all-payments/USDT?fiat=${fiat}`,
             'Cache-Control': 'no-cache'
           },
           body: JSON.stringify({ page: 1, rows: 5, asset: 'USDT', fiat: fiat, tradeType: 'BUY' })
@@ -146,10 +149,10 @@ app.post('/api/tasas/binance', async (req, res) => {
             ratesObj[fiat] = Number(promedio.toFixed(2));
           }
         } else {
-          console.warn(`⚠️ Binance P2P no respondió OK para ${fiat}: HTTP ${response.status}`);
+          console.warn(`⚠️ Binance P2P HTTP ${response.status} para ${fiat}`);
         }
       } catch (e) {
-        console.error(`❌ Error consultando Binance P2P (${fiat}):`, e.message);
+        console.error(`❌ Error Binance (${fiat}):`, e.message);
       }
     }
 
