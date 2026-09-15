@@ -63,24 +63,7 @@
     </div>
     <nav class="flex-1 overflow-y-auto p-3 space-y-2">
       <p class="px-3 text-[10px] font-bold text-indigo-300 uppercase tracking-wider mb-2 mt-2">Principal</p>
-      <button @click="cambiarTabla('registros')" :class="tablaActiva === 'registros' ? 'bg-indigo-600 text-white shadow' : 'text-blue-200 hover:bg-white/10 hover:text-white'" class="w-full flex items-center gap-3 p-2.5 rounded-lg font-semibold text-sm transition-all">
-        <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8.25 6.75h12M8.25 12h12m-12 5.25h12M3.75 6.75h.007v.008H3.75V6.75zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zM3.75 12h.007v.008H3.75V12zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm-.375 5.25h.007v.008H3.75v-.008zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" /></svg>
-        Visor de Remesas
-      </button>
-
-      <div class="py-2"><hr class="border-white/10"></div>
-      <p class="px-3 text-[10px] font-bold text-indigo-300 uppercase tracking-wider mb-2">Revisión de Bases</p>
-
-      <button @click="cambiarTabla('cola_recepcion')" :class="tablaActiva === 'cola_recepcion' ? 'bg-indigo-600 text-white shadow' : 'text-blue-200 hover:bg-white/10 hover:text-white'" class="w-full flex items-center gap-3 p-2.5 rounded-lg font-semibold text-sm transition-all">
-        <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M2.25 13.5h3.86a2.25 2.25 0 012.012 1.244l.256.512a2.25 2.25 0 002.013 1.244h3.218a2.25 2.25 0 002.013-1.244l.256-.512a2.25 2.25 0 012.013-1.244h3.859m-19.5.338V18a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18v-4.162c0-.224-.034-.447-.1-.661L19.24 5.338a2.25 2.25 0 00-2.15-1.588H6.911a2.25 2.25 0 00-2.15 1.588L2.35 12.839a2.25 2.25 0 00-.1.661z" /></svg>
-        Cola de Recepción
-      </button>
-
-      <button @click="cambiarTabla('vista_pares')" :class="tablaActiva === 'vista_pares' ? 'bg-indigo-600 text-white shadow' : 'text-blue-200 hover:bg-white/10 hover:text-white'" class="w-full flex items-center gap-3 p-2.5 rounded-lg font-semibold text-sm transition-all">
-        <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M7.5 21L3 16.5m0 0L7.5 12M3 16.5h13.5m0-13.5L21 7.5m0 0L16.5 12M21 7.5H7.5" /></svg>
-        Vista Pares
-      </button>
-
+      
       <button @click="cambiarTabla('tasas_mercado')" :class="tablaActiva === 'tasas_mercado' ? 'bg-indigo-600 text-white shadow' : 'text-blue-200 hover:bg-white/10 hover:text-white'" class="w-full flex items-center gap-3 p-2.5 rounded-lg font-semibold text-sm transition-all">
         <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z" /></svg>
         Tasas Mercado
@@ -88,7 +71,15 @@
 
       <button @click="cambiarTabla('imagenes_john')" :class="tablaActiva === 'imagenes_john' ? 'bg-indigo-600 text-white shadow' : 'text-blue-200 hover:bg-white/10 hover:text-white'" class="w-full flex items-center gap-3 p-2.5 rounded-lg font-semibold text-sm transition-all">
         <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 001.5-1.5V6a1.5 1.5 0 00-1.5-1.5H3.75A1.5 1.5 0 002.25 6v12a1.5 1.5 0 001.5 1.5zm10.5-11.25h.008v.008h-.008V8.25zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" /></svg>
-        Imágenes JOHN
+        Imágenes
+      </button>
+
+      <div class="py-2"><hr class="border-white/10"></div>
+      <p class="px-3 text-[10px] font-bold text-indigo-300 uppercase tracking-wider mb-2">Revisión de Bases</p>
+
+      <button @click="cambiarTabla('registros')" :class="tablaActiva === 'registros' ? 'bg-indigo-600 text-white shadow' : 'text-blue-200 hover:bg-white/10 hover:text-white'" class="w-full flex items-center gap-3 p-2.5 rounded-lg font-semibold text-sm transition-all">
+        <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8.25 6.75h12M8.25 12h12m-12 5.25h12M3.75 6.75h.007v.008H3.75V6.75zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zM3.75 12h.007v.008H3.75V12zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm-.375 5.25h.007v.008H3.75v-.008zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" /></svg>
+        Visor de Remesas
       </button>
 
       <button @click="cambiarTabla('directorio')" :class="tablaActiva === 'directorio' ? 'bg-indigo-600 text-white shadow' : 'text-blue-200 hover:bg-white/10 hover:text-white'" class="w-full flex items-center gap-3 p-2.5 rounded-lg font-semibold text-sm transition-all">
@@ -109,10 +100,10 @@
               <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
             </button>
             <div>
-              <h1 class="text-base sm:text-xl font-bold tracking-wide leading-tight capitalize" x-text="tablaActiva === 'registros' ? 'Visor de Remesas' : (tablaActiva === 'tasas_mercado' ? 'Gestión de Tasas Mercado' : (tablaActiva === 'imagenes_john' ? 'Monitor RAW WhatsApp (JOHN)' : (tablaActiva === 'directorio' ? 'Directorio (Nombres)' : tablaActiva.replace('_', ' '))))"></h1>
+              <h1 class="text-base sm:text-xl font-bold tracking-wide leading-tight capitalize" x-text="tablaActiva === 'registros' ? 'Visor de Remesas' : (tablaActiva === 'tasas_mercado' ? 'Gestión de Tasas Mercado' : (tablaActiva === 'imagenes_john' ? 'Monitor RAW WhatsApp' : (tablaActiva === 'directorio' ? 'Directorio (Nombres)' : tablaActiva.replace('_', ' '))))"></h1>
             </div>
           </div>
-          <span class="text-xs bg-zorrilla-dark px-2.5 py-1 rounded-full text-blue-200 border border-zorrilla font-medium shrink-0" x-text="tablaActiva === 'registros' ? remesas.length + ' regs' : (tablaActiva === 'vista_pares' ? datosPares.length + ' pares' : (tablaActiva === 'tasas_mercado' ? 'Motor Activo' : (tablaActiva === 'imagenes_john' ? datosImagenesJohn.length + ' imágenes' : datosGenericos.length + ' regs')))"></span>
+          <span class="text-xs bg-zorrilla-dark px-2.5 py-1 rounded-full text-blue-200 border border-zorrilla font-medium shrink-0" x-text="tablaActiva === 'registros' ? remesas.length + ' regs' : (tablaActiva === 'tasas_mercado' ? 'Motor Activo' : (tablaActiva === 'imagenes_john' ? datosImagenesJohn.length + ' imágenes' : datosGenericos.length + ' regs'))"></span>
         </div>
         
         <div x-show="tablaActiva === 'registros'" class="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs sm:text-sm">
@@ -241,83 +232,6 @@
         </div>
       </div>
 
-      <!-- VISTA: VISTA PARES CON DESGLOSE COMPLETO -->
-      <div x-show="tablaActiva === 'vista_pares'" x-cloak class="max-w-full mx-auto space-y-4">
-        <div class="bg-white rounded-lg shadow overflow-hidden">
-          <div class="p-4 border-b border-gray-100 flex justify-between items-center bg-gray-50">
-            <h2 class="font-bold text-gray-700 capitalize flex items-center gap-2">
-              <svg class="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7.5 21L3 16.5m0 0L7.5 12M3 16.5h13.5m0-13.5L21 7.5m0 0L16.5 12M21 7.5H7.5" /></svg>
-              Tabla Consolidada: <span class="text-indigo-900">Vista Pares</span>
-            </h2>
-            <span class="text-xs text-indigo-700 font-mono bg-indigo-50 border border-indigo-200 px-2.5 py-1 rounded-full font-bold" x-text="datosPares.length + ' Conciliaciones'"></span>
-          </div>
-
-          <div class="overflow-x-auto w-full">
-            <table class="w-full text-left border-collapse whitespace-nowrap">
-              <thead class="bg-indigo-900 text-white text-xs uppercase tracking-wider">
-                <tr>
-                  <th class="p-3 font-semibold">ID Par</th>
-                  <th class="p-3 font-semibold">Hashes</th>
-                  <th class="p-3 font-semibold">Asesor</th>
-                  <th class="p-3 font-semibold">Titular Envía</th>
-                  <th class="p-3 font-semibold">Titular Recibe</th>
-                  <th class="p-3 font-semibold">Par Divisas</th>
-                  
-                  <th class="p-3 font-semibold bg-indigo-950">Monto Depositado</th>
-                  <th class="p-3 font-semibold bg-indigo-950">Monto Remesa (Bruto)</th>
-                  <th class="p-3 font-semibold bg-indigo-950">Comisión (3%)</th>
-                  <th class="p-3 font-semibold bg-indigo-950">Monto Neto</th>
-                  <th class="p-3 font-semibold bg-indigo-950">Estado Comisión</th>
-                  
-                  <th class="p-3 font-semibold">Monto Transferencia</th>
-                  <th class="p-3 font-semibold">Tasa / Factor</th>
-                  <th class="p-3 font-semibold">Monto Esperado</th>
-                  <th class="p-3 font-semibold">Margen Error</th>
-                  <th class="p-3 font-semibold">Fecha Proceso</th>
-                </tr>
-              </thead>
-              <tbody class="divide-y divide-gray-200 text-sm bg-white">
-                <template x-for="par in datosPares" :key="par.id || par.remesa_id">
-                  <tr class="hover:bg-indigo-50/50 transition-colors">
-                    <td class="p-3 font-mono text-xs font-bold text-indigo-900 bg-indigo-50/30" x-text="par.remesa_id || par.id_a_id_b"></td>
-                    <td class="p-3 font-mono text-xs text-gray-600" x-text="par.remesa_hash || par.hash_a_hash_b"></td>
-                    <td class="p-3 font-semibold text-gray-800" x-text="par.remesa_asesor || par.asesor"></td>
-                    <td class="p-3 font-semibold text-xs text-emerald-800 bg-emerald-50/40 rounded" x-text="par.remesa_titular_envia || par.titular_envia || 'N/A'"></td>
-                    <td class="p-3 font-semibold text-xs text-rose-800 bg-rose-50/40 rounded" x-text="par.remesa_titular_recibe || par.titular_recibe || 'N/A'"></td>
-                    <td class="p-3">
-                      <span class="px-2 py-0.5 text-xs font-bold rounded bg-blue-100 text-blue-900 border border-blue-200" x-text="par.remesa_monedas || par.remesa"></span>
-                    </td>
-
-                    <td class="p-3 font-bold text-emerald-700 bg-emerald-50/20" x-text="Number(par.remesa_deposito || par.deposito || 0).toLocaleString('en-US', {minimumFractionDigits: 2})"></td>
-                    <td class="p-3 font-bold text-gray-900 bg-indigo-50/20" x-text="Number(par.remesa_monto_bruto || par.remesa_deposito || 0).toLocaleString('en-US', {minimumFractionDigits: 2})"></td>
-                    <td class="p-3 font-semibold text-amber-700 bg-amber-50/20" x-text="Number(par.remesa_comision || (par.remesa_deposito ? par.remesa_deposito * 0.03 : 0)).toLocaleString('en-US', {minimumFractionDigits: 2})"></td>
-                    <td class="p-3 font-bold text-indigo-800 bg-indigo-50/20" x-text="Number(par.remesa_monto_neto || (par.remesa_deposito ? par.remesa_deposito * 0.97 : 0)).toLocaleString('en-US', {minimumFractionDigits: 2})"></td>
-                    <td class="p-3">
-                      <span class="px-2 py-0.5 text-xs font-bold rounded" :class="(par.remesa_estado_comision || 'PENDIENTE') === 'DESCONTADA' ? 'bg-emerald-100 text-emerald-800 border border-emerald-300' : 'bg-amber-100 text-amber-800 border border-amber-300'" x-text="par.remesa_estado_comision || 'PENDIENTE'"></span>
-                    </td>
-
-                    <td class="p-3 font-bold text-rose-700" x-text="Number(par.remesa_transferencia || par.transferencia || 0).toLocaleString('en-US', {minimumFractionDigits: 2})"></td>
-                    <td class="p-3 font-mono text-xs text-gray-700">
-                      <span class="font-bold text-indigo-800" x-text="par.remesa_tasa_numero || par.tasa_numero"></span>
-                      <span class="text-gray-400">@</span>
-                      <span x-text="par.remesa_tasa_factor || par.tasa_factor"></span>
-                    </td>
-                    <td class="p-3 font-semibold text-gray-900" x-text="Number(par.remesa_monto_esperado || par.monto_esperado || 0).toLocaleString('en-US', {minimumFractionDigits: 2})"></td>
-                    <td class="p-3">
-                      <span class="px-2 py-0.5 text-xs font-bold rounded" :class="Number(par.remesa_error_margen || par.error_margen || 0) === 0 ? 'bg-emerald-100 text-emerald-800 border border-emerald-300' : 'bg-amber-100 text-amber-800 border border-amber-300'" x-text="(Number(par.remesa_error_margen || par.error_margen || 0) * 100).toFixed(2) + '%'"></span>
-                    </td>
-                    <td class="p-3 text-xs text-gray-500 font-mono" x-text="par.remesa_fecha_procesa || par.fecha_proceso || '-'"></td>
-                  </tr>
-                </template>
-                <tr x-show="datosPares.length === 0">
-                  <td colspan="16" class="p-8 text-center text-gray-400 italic bg-gray-50">No hay remesas conciliadas en la tabla vista_pares.</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </div>
-
       <!-- VISTA ESPECIALIZADA: TASAS MERCADO & COMISIONES (%) -->
       <div x-show="tablaActiva === 'tasas_mercado'" x-cloak class="max-w-6xl mx-auto space-y-6">
         
@@ -438,13 +352,13 @@
 
       </div>
 
-      <!-- VISTA ESPECIALIZADA: MONITOR RAW IMÁGENES JOHN -->
+      <!-- VISTA ESPECIALIZADA: MONITOR RAW IMÁGENES -->
       <div x-show="tablaActiva === 'imagenes_john'" x-cloak class="max-w-6xl mx-auto space-y-4">
         
         <div class="flex justify-between items-center bg-white p-4 rounded-lg shadow border border-gray-200">
           <div>
             <h2 class="text-base font-bold text-gray-800 flex items-center gap-2">
-              <span class="text-lg">📱</span> Monitor RAW WhatsApp — <span class="text-indigo-900 font-extrabold">JOHN</span>
+              <span class="text-lg">📱</span> Monitor RAW WhatsApp
             </h2>
             <p class="text-xs text-gray-500">Filtrado inteligente de capturas y comprobantes crudos en PostgreSQL</p>
           </div>
@@ -511,7 +425,7 @@
       </div>
 
       <!-- VISTA GENÉRICA -->
-      <div x-show="tablaActiva !== 'registros' && tablaActiva !== 'vista_pares' && tablaActiva !== 'tasas_mercado' && tablaActiva !== 'imagenes_john'" x-cloak class="max-w-full mx-auto">
+      <div x-show="tablaActiva !== 'registros' && tablaActiva !== 'tasas_mercado' && tablaActiva !== 'imagenes_john'" x-cloak class="max-w-full mx-auto">
         <div class="bg-white rounded-lg shadow overflow-hidden">
           <div class="p-4 border-b border-gray-100 flex justify-between items-center bg-gray-50">
             <h2 class="font-bold text-gray-700 capitalize flex items-center gap-2">
@@ -692,9 +606,8 @@
         asesorSeleccionado: '', fechaInicio: '', fechaFin: '', hashSeleccionado: '',
         fechaMenuAbierto: false,
         
-        tablaActiva: 'registros',
+        tablaActiva: 'tasas_mercado', // Inicia ahora en Tasas por defecto
         sidebarAbierto: false,
-        datosPares: [],
         datosGenericos: [], columnasGenericas: [],
 
         tasasActivas: {}, idTasaActiva: 'T000',
@@ -764,7 +677,7 @@
             .then(data => { this.asesores = data; })
             .catch(() => {});
 
-          this.cambiarTabla('registros');
+          this.cambiarTabla('tasas_mercado');
         },
 
         async cargarImagenesJohn() {
@@ -783,22 +696,14 @@
           this.tablaActiva = nombre;
           this.sidebarAbierto = false;
 
-          if (nombre === 'registros') {
-            await this.onFiltroPadreChange();
-          } else if (nombre === 'vista_pares') {
-            this.datosPares = [];
-            try {
-              const res = await this.fetchConTimeout('/api/tabla/vista_pares');
-              if (res.ok) this.datosPares = await res.json();
-            } catch (e) {
-              console.error('Error al cargar vista_pares:', e);
-            }
-          } else if (nombre === 'tasas_mercado') {
+          if (nombre === 'tasas_mercado') {
             await this.cargarTasasActivas();
             await this.cargarFactores();
             await this.cargarBorrador(true);
           } else if (nombre === 'imagenes_john') {
             await this.cargarImagenesJohn();
+          } else if (nombre === 'registros') {
+            await this.onFiltroPadreChange();
           } else {
             this.datosGenericos = [];
             this.columnasGenericas = [];
