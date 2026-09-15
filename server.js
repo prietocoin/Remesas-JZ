@@ -24,7 +24,7 @@ app.get('/', (req, res) => {
 });
 
 // ==========================================
-// MÓDULO TASAS & FACTORES - REMESAS JZ (NORMALIZADO & LEGACY COMPATIBLE)
+// MÓDULO TASAS & FACTORES - REMESAS JZ
 // ==========================================
 
 async function initTasasJZ() {
@@ -62,12 +62,10 @@ async function initTasasJZ() {
       CREATE INDEX IF NOT EXISTS idx_jz_notificaciones_id_tasa ON jz_notificaciones(id_tasa);
     `);
 
-    // Remueve restricción NOT NULL en jz_mercado_tasas si existía previamente
     await pool.query(`
       ALTER TABLE jz_mercado_tasas ALTER COLUMN timestamp DROP NOT NULL;
     `).catch(() => {});
 
-    // Automigración: recupera lotes creados en jz_mercado_tasas antes de la normalización
     await pool.query(`
       INSERT INTO jz_lotes (id_tasa, correo_zelle, timestamp)
       SELECT 
@@ -80,7 +78,6 @@ async function initTasasJZ() {
       ON CONFLICT (id_tasa) DO NOTHING;
     `);
 
-    // Sembrado inicial de factores de comisión
     const checkFactores = await pool.query('SELECT COUNT(*) FROM jz_factores_matriz');
     if (parseInt(checkFactores.rows[0].count, 10) === 0) {
       await pool.query(`
@@ -122,7 +119,7 @@ app.get('/api/tasas/ultimas', async (req, res) => {
   }
 });
 
-// 2. Consulta en vivo desde Binance P2P API con cabeceras antibloqueo
+// 2. Consulta en vivo desde Binance P2P API
 app.post('/api/tasas/binance', async (req, res) => {
   const client = await pool.connect();
   try {
@@ -339,18 +336,14 @@ app.post('/api/tasas/factores', async (req, res) => {
   }
 });
 
-// Endpoint complementario: Búsqueda flexible de imágenes RAW
+// 🔥 ENDPOINT CORREGIDO: Carga directa de imágenes RAW sin filtro excluyente
 app.get('/api/raw-imagenes', async (req, res) => {
   try {
-    const instancia = req.query.instancia || 'JOHN';
     const { rows } = await pool.query(
-      `SELECT id, hash_largo, hash_corto, grupo_raw, usuario_raw, nombre_push, caption, url_imagen, COALESCE(conteo, 1) AS conteo, estado, instancia, created_at, timestamp_msg
+      `SELECT id, hash_largo, hash_corto, grupo_raw, usuario_raw, nombre_push, caption, url_imagen, COALESCE(conteo, 1) AS conteo, estado, instancia, created_at
        FROM registros_raw 
-       WHERE (TRIM(instancia) ILIKE '%' || TRIM($1) || '%' OR instancia IS NULL OR TRIM(instancia) = '')
-         AND url_imagen IS NOT NULL 
-         AND TRIM(url_imagen) != '' 
-       ORDER BY id DESC LIMIT 60`,
-      [instancia]
+       WHERE url_imagen IS NOT NULL AND TRIM(CAST(url_imagen AS text)) != '' 
+       ORDER BY id DESC LIMIT 60`
     );
     res.json({ success: true, count: rows.length, rows });
   } catch (err) { 
