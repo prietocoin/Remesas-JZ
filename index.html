@@ -91,7 +91,8 @@
         Imágenes JOHN
       </button>
 
-      <button @click="cambiarTabla('t_nombres')" :class="tablaActiva === 't_nombres' ? 'bg-indigo-600 text-white shadow' : 'text-blue-200 hover:bg-white/10 hover:text-white'" class="w-full flex items-center gap-3 p-2.5 rounded-lg font-semibold text-sm transition-all">
+      <!-- BOTÓN CORREGIDO: Llama a la tabla 'directorio' que contiene la data -->
+      <button @click="cambiarTabla('directorio')" :class="tablaActiva === 'directorio' ? 'bg-indigo-600 text-white shadow' : 'text-blue-200 hover:bg-white/10 hover:text-white'" class="w-full flex items-center gap-3 p-2.5 rounded-lg font-semibold text-sm transition-all">
         <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 9h3.75M15 12h3.75M15 15h3.75M4.5 19.5h15a2.25 2.25 0 002.25-2.25V6.75A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25v10.5A2.25 2.25 0 004.5 19.5zm6-10.125a1.875 1.875 0 11-3.75 0 1.875 1.875 0 013.75 0zm1.294 6.336a6.721 6.721 0 01-3.17.789 6.721 6.721 0 01-3.168-.789 3.376 3.376 0 016.338 0z" /></svg>
         Directorio (Nombres)
       </button>
@@ -109,7 +110,7 @@
               <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
             </button>
             <div>
-              <h1 class="text-base sm:text-xl font-bold tracking-wide leading-tight capitalize" x-text="tablaActiva === 'registros' ? 'Visor de Remesas' : (tablaActiva === 'tasas_mercado' ? 'Gestión de Tasas Mercado' : (tablaActiva === 'imagenes_john' ? 'Monitor RAW WhatsApp (JOHN)' : tablaActiva.replace('_', ' ')))"></h1>
+              <h1 class="text-base sm:text-xl font-bold tracking-wide leading-tight capitalize" x-text="tablaActiva === 'registros' ? 'Visor de Remesas' : (tablaActiva === 'tasas_mercado' ? 'Gestión de Tasas Mercado' : (tablaActiva === 'imagenes_john' ? 'Monitor RAW WhatsApp (JOHN)' : (tablaActiva === 'directorio' ? 'Directorio (Nombres)' : tablaActiva.replace('_', ' '))))"></h1>
             </div>
           </div>
           <span class="text-xs bg-zorrilla-dark px-2.5 py-1 rounded-full text-blue-200 border border-zorrilla font-medium shrink-0" x-text="tablaActiva === 'registros' ? remesas.length + ' regs' : (tablaActiva === 'vista_pares' ? datosPares.length + ' pares' : (tablaActiva === 'tasas_mercado' ? 'Motor Activo' : (tablaActiva === 'imagenes_john' ? datosImagenesJohn.length + ' imágenes' : datosGenericos.length + ' regs')))"></span>
@@ -752,7 +753,7 @@
         },
 
         init() {
-          // Oculta el preloader automáticamente tras 800ms de forma independiente
+          // Oculta el preloader automáticamente tras 800ms
           setTimeout(() => {
             const preloader = document.getElementById('preloader');
             if (preloader) {
@@ -763,7 +764,6 @@
 
           this.sincronizarParesConBD();
           
-          // Carga datos asíncronos en segundo plano
           this.fetchConTimeout('/api/asesores')
             .then(res => res.ok ? res.json() : [])
             .then(data => { this.asesores = data; })
@@ -774,7 +774,7 @@
 
         async cargarImagenesJohn() {
           try {
-            const res = await this.fetchConTimeout('/api/raw-imagenes?instancia=JOHN');
+            const res = await this.fetchConTimeout('/api/raw-imagenes');
             const data = await res.json();
             if (data && data.success) {
               this.datosImagenesJohn = data.rows || [];
