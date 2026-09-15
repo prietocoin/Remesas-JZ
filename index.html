@@ -754,7 +754,20 @@
             }, 1800);
           }
         },
-
+async cargarImagenesJohn() {
+  try {
+    const res = await fetch('/api/raw-imagenes?instancia=JOHN');
+    const data = await res.json();
+    if (data && data.success) {
+      this.datosImagenesJohn = data.rows || [];
+    } else {
+      alert('❌ Error al obtener imágenes: ' + (data.error || 'Fallo desconocido'));
+    }
+  } catch (e) {
+    console.error('Error cargando imágenes de JOHN:', e);
+    alert('❌ Error de comunicación con el servidor Node.');
+  }
+}
         async cambiarTabla(nombre) {
           this.tablaActiva = nombre;
           this.sidebarAbierto = false;
