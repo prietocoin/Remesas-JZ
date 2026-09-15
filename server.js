@@ -78,6 +78,7 @@ async function initTasasJZ() {
     console.error('❌ Error inicializando tablas de tasas JZ:', err.message);
   }
 }
+initTasasJZ();
 
 // 1. Lectura de tasa activa en producción (Aislada para JZ)
 app.get('/api/tasas/ultimas', async (req, res) => {
