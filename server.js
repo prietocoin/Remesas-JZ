@@ -96,7 +96,6 @@ async function initTasasJZ() {
 }
 initTasasJZ();
 
-// 1. Lectura de tasa activa en producción
 app.get('/api/tasas/ultimas', async (req, res) => {
   try {
     const lastLot = await pool.query(
@@ -119,7 +118,6 @@ app.get('/api/tasas/ultimas', async (req, res) => {
   }
 });
 
-// 2. Consulta en vivo desde Binance P2P API
 app.post('/api/tasas/binance', async (req, res) => {
   const client = await pool.connect();
   try {
@@ -189,7 +187,6 @@ app.post('/api/tasas/binance', async (req, res) => {
   }
 });
 
-// 3. Webhook de n8n
 app.post('/api/tasas/n8n-webhook', async (req, res) => {
   const client = await pool.connect();
   try {
@@ -226,7 +223,6 @@ app.post('/api/tasas/n8n-webhook', async (req, res) => {
   }
 });
 
-// 4. Obtener borrador pendiente
 app.get('/api/tasas/fetch-hoo', async (req, res) => {
   try {
     const lot = await pool.query(`SELECT correo_zelle FROM jz_lotes WHERE id_tasa = 'BORRADOR';`);
@@ -242,7 +238,6 @@ app.get('/api/tasas/fetch-hoo', async (req, res) => {
   }
 });
 
-// 5. Promocionar borrador a lote oficial
 app.post('/api/tasas/publicar', async (req, res) => {
   const client = await pool.connect();
   try {
@@ -293,7 +288,6 @@ app.post('/api/tasas/publicar', async (req, res) => {
   }
 });
 
-// 6. Matriz de factores
 app.get('/api/tasas/factores', async (req, res) => {
   try {
     const resBD = await pool.query('SELECT moneda_origen, moneda_destino, factor FROM jz_factores_matriz;');
@@ -334,48 +328,52 @@ app.post('/api/tasas/factores', async (req, res) => {
   }
 });
 
-// 🔥 7. BÚSQUEDA DE IMÁGENES RAW ULTRA-TOLERANTE
+// 🔥 BÚSQUEDA DE IMÁGENES RAW CORREGIDA (Filtra en SQL ANTES del LIMIT 60)
 app.get('/api/raw-imagenes', async (req, res) => {
   try {
-    let rows = [];
+    // 1. Filtro estricto en SQL para asegurar traer registros que SÍ tengan imagen
+    let rawRes = await pool.query(`
+      SELECT * FROM registros_raw 
+      WHERE (url_imagen IS NOT NULL AND TRIM(CAST(url_imagen AS text)) != '')
+         OR (hiperlink IS NOT NULL AND TRIM(CAST(hiperlink AS text)) != '')
+      ORDER BY id DESC LIMIT 60
+    `).catch(() => ({ rows: [] }));
 
-    // Intento 1: Leer de registros_raw
-    try {
-      const rawRes = await pool.query(`SELECT * FROM registros_raw ORDER BY id DESC LIMIT 60`);
-      rows = rawRes.rows || [];
-    } catch (e) {
-      console.warn('⚠️ No se pudo consultar registros_raw:', e.message);
+    let rows = rawRes.rows || [];
+
+    // 2. Si registros_raw está vacía, fallback a la tabla registros
+    if (rows.length === 0) {
+      const regFallback = await pool.query(`
+        SELECT id, hash_corto, nombre_asesor AS nombre_push, titular AS usuario_raw, 
+               banco AS grupo_raw, monto::text AS caption, hiperlink AS url_imagen, 
+               estado_proceso AS estado, created_at 
+        FROM registros 
+        WHERE hiperlink IS NOT NULL AND TRIM(CAST(hiperlink AS text)) != '' 
+        ORDER BY id DESC LIMIT 60
+      `).catch(() => ({ rows: [] }));
+      rows = regFallback.rows || [];
     }
 
-    // Intento 2: Fallback a registros si registros_raw está vacía
-    const processRows = (list) => list.map((r) => {
-      const url = r.url_imagen || r.url || r.imagen_url || r.hiperlink || r.link || r.media_url || '';
+    const normalized = rows.map((r) => {
+      const url = r.url_imagen || r.hiperlink || r.url || r.media_url || r.link || '';
+      const hashLargo = r.hash_largo || r.hash || '';
+      const hashCorto = r.hash_corto || (hashLargo ? hashLargo.substring(0, 12) : '') || `#${r.id}`;
+
       return {
         id: r.id,
-        hash_largo: r.hash_largo || r.hash || '',
-        hash_corto: r.hash_corto || `#${r.id}`,
-        grupo_raw: r.grupo_raw || r.grupo || r.chat_jid || r.banco || 'Chat Directo',
+        hash_largo: hashLargo,
+        hash_corto: hashCorto,
+        grupo_raw: r.grupo_raw || r.grupo || r.chat_jid || 'Chat Directo',
         usuario_raw: r.usuario_raw || r.usuario || r.titular || 'Cliente',
-        nombre_push: r.nombre_push || r.push_name || r.nombre_asesor || r.nombre || 'Desconocido',
-        caption: r.caption || r.texto || r.monto || 'Sin texto...',
+        nombre_push: r.nombre_push || r.push_name || r.nombre_asesor || r.usuario_raw || 'Desconocido',
+        caption: r.caption || r.texto || (r.monto ? `$${r.monto}` : 'Sin texto...'),
         url_imagen: url,
         conteo: r.conteo || 1,
         estado: r.estado || r.estado_proceso || 'PROCESADO',
         instancia: r.instancia || 'JOHN',
         created_at: r.created_at || new Date()
       };
-    }).filter(r => r.url_imagen && String(r.url_imagen).trim() !== '');
-
-    let normalized = processRows(rows);
-
-    if (normalized.length === 0) {
-      const regFallback = await pool.query(`
-        SELECT * FROM registros 
-        WHERE hiperlink IS NOT NULL AND TRIM(hiperlink) != '' 
-        ORDER BY id DESC LIMIT 60
-      `).catch(() => ({ rows: [] }));
-      normalized = processRows(regFallback.rows || []);
-    }
+    });
 
     res.json({ success: true, count: normalized.length, rows: normalized });
   } catch (err) {
@@ -420,7 +418,7 @@ app.get('/api/remesas', async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// 🔥 8. ENDPOINT CONSULTA TABLAS (INCLUYE 'directorio')
+// 🔥 CONSULTA TABLAS (Incluye 'directorio')
 app.get('/api/tabla/:nombre', async (req, res) => {
   const tablasPermitidas = [
     'registros', 'registros_raw', 'comprobantes_test', 'cola_recepcion', 
