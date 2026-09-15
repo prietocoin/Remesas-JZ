@@ -31,7 +31,7 @@
 <body class="bg-gray-100 font-sans text-gray-900 h-screen overflow-hidden flex" x-data="dashboardApp()" x-init="init()">
 
   <!-- Preloader -->
-  <div id="preloader" class="fixed inset-0 bg-zorrilla z-[100] flex flex-col items-center justify-center p-4 transition-all duration-700 opacity-100">
+  <div id="preloader" class="fixed inset-0 bg-zorrilla z-[100] flex flex-col items-center justify-center p-4 transition-all duration-500 opacity-100">
     <div class="flex flex-col items-center max-w-xs text-center space-y-4">
       <div class="relative flex items-center justify-center">
         <div class="absolute inset-0 rounded-full bg-white/10 blur-xl animate-pulse"></div>
@@ -505,7 +505,7 @@
         </div>
 
         <div x-show="datosImagenesJohn.length === 0" class="p-12 text-center text-gray-400 italic bg-white rounded-lg border border-gray-200">
-          No se encontraron imágenes registradas bajo la instancia "JOHN".
+          No se encontraron imágenes registradas en la base de datos.
         </div>
 
       </div>
@@ -708,7 +708,7 @@
         datosImagenesJohn: [],
         cargandoBinance: false,
 
-        // Pares Predeterminados de J. Zorrilla (Nombres exactos)
+        // Pares Predeterminados de J. Zorrilla
         paresBaseJZ: [
           { key: 'USD_VES', orig: 'USD', dest: 'VES', label: 'USD ➔ VES' },
           { key: 'PEN_VES', orig: 'PEN', dest: 'VES', label: 'PEN ➔ VES' },
@@ -736,38 +736,54 @@
         sortCol: 'id', sortAsc: false,
         formEdit: { id: null, monto: 0, estado: '', titular: '', moneda: '', tasa: '', banco: '', fecha_hora: '', timestamp: '', hiperlink: '', hash_corto: '', tipo_operacion: '' },
 
-        async init() {
-          this.sincronizarParesConBD();
+        // Helper para peticiones HTTP a prueba de congelamiento (Timeout 4s)
+        async fetchConTimeout(resource, options = {}) {
+          const { timeout = 4000 } = options;
+          const controller = new AbortController();
+          const id = setTimeout(() => controller.abort(), timeout);
           try {
-            const resA = await fetch('/api/asesores');
-            if (resA.ok) this.asesores = await resA.json();
-            await this.cambiarTabla('registros');
-          } catch (e) {
-            console.error(e);
-          } finally {
-            setTimeout(() => {
-              const preloader = document.getElementById('preloader');
-              if (preloader) {
-                preloader.classList.add('opacity-0', 'pointer-events-none');
-                setTimeout(() => preloader.remove(), 700);
-              }
-            }, 1800);
+            const response = await fetch(resource, { ...options, signal: controller.signal });
+            clearTimeout(id);
+            return response;
+          } catch (error) {
+            clearTimeout(id);
+            throw error;
           }
         },
-async cargarImagenesJohn() {
-  try {
-    const res = await fetch('/api/raw-imagenes?instancia=JOHN');
-    const data = await res.json();
-    if (data && data.success) {
-      this.datosImagenesJohn = data.rows || [];
-    } else {
-      alert('❌ Error al obtener imágenes: ' + (data.error || 'Fallo desconocido'));
-    }
-  } catch (e) {
-    console.error('Error cargando imágenes de JOHN:', e);
-    alert('❌ Error de comunicación con el servidor Node.');
-  }
-}
+
+        init() {
+          // Oculta el preloader automáticamente tras 800ms de forma independiente
+          setTimeout(() => {
+            const preloader = document.getElementById('preloader');
+            if (preloader) {
+              preloader.classList.add('opacity-0', 'pointer-events-none');
+              setTimeout(() => preloader.remove(), 500);
+            }
+          }, 800);
+
+          this.sincronizarParesConBD();
+          
+          // Carga datos asíncronos en segundo plano
+          this.fetchConTimeout('/api/asesores')
+            .then(res => res.ok ? res.json() : [])
+            .then(data => { this.asesores = data; })
+            .catch(() => {});
+
+          this.cambiarTabla('registros');
+        },
+
+        async cargarImagenesJohn() {
+          try {
+            const res = await this.fetchConTimeout('/api/raw-imagenes?instancia=JOHN');
+            const data = await res.json();
+            if (data && data.success) {
+              this.datosImagenesJohn = data.rows || [];
+            }
+          } catch (e) {
+            console.warn('Conexión lenta o fallida al cargar imágenes:', e.message);
+          }
+        },
+
         async cambiarTabla(nombre) {
           this.tablaActiva = nombre;
           this.sidebarAbierto = false;
@@ -777,7 +793,7 @@ async cargarImagenesJohn() {
           } else if (nombre === 'vista_pares') {
             this.datosPares = [];
             try {
-              const res = await fetch('/api/tabla/vista_pares');
+              const res = await this.fetchConTimeout('/api/tabla/vista_pares');
               if (res.ok) this.datosPares = await res.json();
             } catch (e) {
               console.error('Error al cargar vista_pares:', e);
@@ -792,7 +808,7 @@ async cargarImagenesJohn() {
             this.datosGenericos = [];
             this.columnasGenericas = [];
             try {
-              const res = await fetch(`/api/tabla/${nombre}`);
+              const res = await this.fetchConTimeout(`/api/tabla/${nombre}`);
               if (res.ok) {
                 this.datosGenericos = await res.json();
                 if (this.datosGenericos.length > 0) {
@@ -884,22 +900,10 @@ async cargarImagenesJohn() {
           return resultadoTruncado ? resultadoTruncado.toLocaleString('es-ES') : '0';
         },
 
-        async cargarImagenesJohn() {
-          try {
-            const res = await fetch('/api/raw-imagenes?instancia=JOHN');
-            const data = await res.json();
-            if (data && data.success) {
-              this.datosImagenesJohn = data.rows || [];
-            }
-          } catch (e) {
-            console.error('Error cargando imágenes de JOHN:', e);
-          }
-        },
-
         async conectarBinance() {
           this.cargandoBinance = true;
           try {
-            const res = await fetch('/api/tasas/binance', { method: 'POST' });
+            const res = await this.fetchConTimeout('/api/tasas/binance', { method: 'POST', timeout: 10000 });
             const data = await res.json();
             if (data && data.success) {
               this.borradorTasas = data.rates || {};
@@ -909,7 +913,7 @@ async cargarImagenesJohn() {
               alert('⚠️ Error Binance: ' + (data.error || data.message || 'No se pudo conectar con P2P.'));
             }
           } catch (e) {
-            alert('❌ Error de conexión con el servidor Node.');
+            alert('❌ Error de conexión o tiempo agotado.');
           } finally {
             this.cargandoBinance = false;
           }
@@ -917,7 +921,7 @@ async cargarImagenesJohn() {
 
         async cargarTasasActivas() {
           try {
-            const res = await fetch('/api/tasas/ultimas');
+            const res = await this.fetchConTimeout('/api/tasas/ultimas');
             const data = await res.json();
             if (data && data.success) {
               this.idTasaActiva = data.id_tasa || 'T001';
@@ -929,7 +933,7 @@ async cargarImagenesJohn() {
 
         async cargarBorrador(silencioso = false) {
           try {
-            const res = await fetch('/api/tasas/fetch-hoo');
+            const res = await this.fetchConTimeout('/api/tasas/fetch-hoo');
             if (res.ok) {
               const data = await res.json();
               if (data && data.success) {
@@ -951,7 +955,7 @@ async cargarImagenesJohn() {
           if (Object.keys(this.borradorTasas).length === 0) return alert('No hay borrador que publicar.');
           if (!confirm('¿Deseas publicar este lote como oficial?')) return;
           try {
-            const res = await fetch('/api/tasas/publicar', {
+            const res = await this.fetchConTimeout('/api/tasas/publicar', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ 
@@ -974,7 +978,7 @@ async cargarImagenesJohn() {
 
         async cargarFactores() {
           try {
-            const res = await fetch('/api/tasas/factores');
+            const res = await this.fetchConTimeout('/api/tasas/factores');
             const data = await res.json();
             if (data && data.success) {
               this.factoresMatriz = data.factores || {};
@@ -988,10 +992,7 @@ async cargarImagenesJohn() {
 
         sincronizarParesConBD() {
           const paresDict = {};
-          
-          (this.paresBaseJZ || []).forEach(p => { 
-            paresDict[`${p.orig}_${p.dest}`] = p; 
-          });
+          (this.paresBaseJZ || []).forEach(p => { paresDict[`${p.orig}_${p.dest}`] = p; });
 
           if (this.factoresMatriz) {
             Object.keys(this.factoresMatriz).forEach(orig => {
@@ -1007,7 +1008,6 @@ async cargarImagenesJohn() {
               }
             });
           }
-
           this.paresJZ = Object.values(paresDict);
         },
 
@@ -1027,7 +1027,7 @@ async cargarImagenesJohn() {
           this.actualizarComisionPar(orig, dest, comision);
 
           try {
-            const res = await fetch('/api/tasas/factores', {
+            const res = await this.fetchConTimeout('/api/tasas/factores', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
@@ -1066,7 +1066,7 @@ async cargarImagenesJohn() {
             if (origenes.length === 0) return alert('No hay comisiones para guardar.');
 
             for (const orig of origenes) {
-              await fetch('/api/tasas/factores', {
+              await this.fetchConTimeout('/api/tasas/factores', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -1186,15 +1186,19 @@ async cargarImagenesJohn() {
         },
 
         async cargarHashes() {
-          const url = `/api/hashes?asesor=${encodeURIComponent(this.asesorSeleccionado)}&fechaInicio=${this.fechaInicio}&fechaFin=${this.fechaFin}`;
-          const res = await fetch(url);
-          if (res.ok) this.hashes = await res.json();
+          try {
+            const url = `/api/hashes?asesor=${encodeURIComponent(this.asesorSeleccionado)}&fechaInicio=${this.fechaInicio}&fechaFin=${this.fechaFin}`;
+            const res = await this.fetchConTimeout(url);
+            if (res.ok) this.hashes = await res.json();
+          } catch (e) {}
         },
 
         async cargarRemesas() {
-          const url = `/api/remesas?asesor=${encodeURIComponent(this.asesorSeleccionado)}&fechaInicio=${this.fechaInicio}&fechaFin=${this.fechaFin}&hash=${encodeURIComponent(this.hashSeleccionado)}`;
-          const res = await fetch(url);
-          if (res.ok) this.remesas = await res.json();
+          try {
+            const url = `/api/remesas?asesor=${encodeURIComponent(this.asesorSeleccionado)}&fechaInicio=${this.fechaInicio}&fechaFin=${this.fechaFin}&hash=${encodeURIComponent(this.hashSeleccionado)}`;
+            const res = await this.fetchConTimeout(url);
+            if (res.ok) this.remesas = await res.json();
+          } catch (e) {}
         },
 
         calcularTotal() {
@@ -1209,13 +1213,17 @@ async cargarImagenesJohn() {
         },
 
         async guardarCambios() {
-          await fetch(`/api/remesas/${this.formEdit.id}`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(this.formEdit)
-          });
-          this.modalAbierto = false;
-          await this.cargarRemesas();
+          try {
+            await this.fetchConTimeout(`/api/remesas/${this.formEdit.id}`, {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(this.formEdit)
+            });
+            this.modalAbierto = false;
+            await this.cargarRemesas();
+          } catch (e) {
+            alert('Error al guardar cambios.');
+          }
         }
       }
     }
