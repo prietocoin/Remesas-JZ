@@ -62,7 +62,7 @@ async function initTasasJZ() {
       CREATE INDEX IF NOT EXISTS idx_jz_notificaciones_id_tasa ON jz_notificaciones(id_tasa);
     `);
 
-    // 🔥 Remueve restricción NOT NULL en jz_mercado_tasas si existía previamente
+    // Remueve restricción NOT NULL en jz_mercado_tasas si existía previamente
     await pool.query(`
       ALTER TABLE jz_mercado_tasas ALTER COLUMN timestamp DROP NOT NULL;
     `).catch(() => {});
@@ -339,13 +339,16 @@ app.post('/api/tasas/factores', async (req, res) => {
   }
 });
 
-// Endpoints complementarios
+// Endpoints complementarios (Filtro flexible de imágenes RAW)
 app.get('/api/raw-imagenes', async (req, res) => {
   try {
     const instancia = req.query.instancia || 'JOHN';
     const { rows } = await pool.query(
       `SELECT id, hash_largo, hash_corto, grupo_raw, usuario_raw, nombre_push, caption, url_imagen, COALESCE(conteo, 1) AS conteo, estado, instancia, created_at, timestamp_msg
-       FROM registros_raw WHERE instancia = $1 AND url_imagen IS NOT NULL AND url_imagen != '' ORDER BY id DESC LIMIT 60`,
+       FROM registros_raw 
+       WHERE (LOWER(instancia) = LOWER($1) OR instancia IS NULL OR instancia = '')
+         AND url_imagen IS NOT NULL AND url_imagen != '' 
+       ORDER BY id DESC LIMIT 60`,
       [instancia]
     );
     res.json({ success: true, count: rows.length, rows });
