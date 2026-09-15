@@ -24,7 +24,7 @@ app.get('/', (req, res) => {
 });
 
 // ==========================================
-// MÓDULO TASAS & FACTORES - REMESAS JZ (NORMALIZADO)
+// MÓDULO TASAS & FACTORES - REMESAS JZ (NORMALIZADO & LEGACY COMPATIBLE)
 // ==========================================
 
 async function initTasasJZ() {
@@ -61,6 +61,11 @@ async function initTasasJZ() {
       CREATE INDEX IF NOT EXISTS idx_jz_mercado_tasas_id ON jz_mercado_tasas(id_tasa);
       CREATE INDEX IF NOT EXISTS idx_jz_notificaciones_id_tasa ON jz_notificaciones(id_tasa);
     `);
+
+    // 🔥 Remueve restricción NOT NULL en jz_mercado_tasas si existía previamente
+    await pool.query(`
+      ALTER TABLE jz_mercado_tasas ALTER COLUMN timestamp DROP NOT NULL;
+    `).catch(() => {});
 
     // Automigración: recupera lotes creados en jz_mercado_tasas antes de la normalización
     await pool.query(`
@@ -117,7 +122,7 @@ app.get('/api/tasas/ultimas', async (req, res) => {
   }
 });
 
-// 2. Consulta en vivo desde Binance P2P API con cabeceras de navegación antibloqueo
+// 2. Consulta en vivo desde Binance P2P API con cabeceras antibloqueo
 app.post('/api/tasas/binance', async (req, res) => {
   const client = await pool.connect();
   try {
@@ -173,8 +178,8 @@ app.post('/api/tasas/binance', async (req, res) => {
     for (const [moneda, valor] of Object.entries(ratesObj)) {
       if (!isNaN(valor)) {
         await client.query(
-          `INSERT INTO jz_mercado_tasas (id_tasa, moneda, tasa_base) VALUES ('BORRADOR', $1, $2);`, 
-          [moneda.toUpperCase(), valor]
+          `INSERT INTO jz_mercado_tasas (id_tasa, moneda, tasa_base, timestamp) VALUES ('BORRADOR', $1, $2, $3);`, 
+          [moneda.toUpperCase(), valor, timestamp]
         );
       }
     }
@@ -211,8 +216,8 @@ app.post('/api/tasas/n8n-webhook', async (req, res) => {
       const numValor = parseFloat(valor);
       if (!isNaN(numValor)) {
         await client.query(
-          `INSERT INTO jz_mercado_tasas (id_tasa, moneda, tasa_base) VALUES ('BORRADOR', $1, $2);`, 
-          [moneda.toUpperCase(), numValor]
+          `INSERT INTO jz_mercado_tasas (id_tasa, moneda, tasa_base, timestamp) VALUES ('BORRADOR', $1, $2, $3);`, 
+          [moneda.toUpperCase(), numValor, timestamp]
         );
       }
     }
@@ -262,25 +267,21 @@ app.post('/api/tasas/publicar', async (req, res) => {
     }
     const idTasaOficial = `T${String(num).padStart(3, '0')}`;
 
-    // Inserta 1 solo registro de lote en la cabecera
     await client.query(
       `INSERT INTO jz_lotes (id_tasa, correo_zelle, timestamp) VALUES ($1, $2, $3);`,
       [idTasaOficial, correoZelle, timestamp]
     );
 
-    // Inserta el detalle de divisas
     for (const [moneda, valor] of Object.entries(tasas)) {
       await client.query(
-        `INSERT INTO jz_mercado_tasas (id_tasa, moneda, tasa_base) VALUES ($1, $2, $3);`, 
-        [idTasaOficial, moneda.toUpperCase(), parseFloat(valor)]
+        `INSERT INTO jz_mercado_tasas (id_tasa, moneda, tasa_base, timestamp) VALUES ($1, $2, $3, $4);`, 
+        [idTasaOficial, moneda.toUpperCase(), parseFloat(valor), timestamp]
       );
     }
 
-    // Limpia borradores
     await client.query("DELETE FROM jz_mercado_tasas WHERE id_tasa = 'BORRADOR';");
     await client.query("DELETE FROM jz_lotes WHERE id_tasa = 'BORRADOR';");
     
-    // Inserción única en jz_notificaciones para disparar n8n
     await client.query(
       `INSERT INTO jz_notificaciones (id_tasa, estado) VALUES ($1, 'PENDIENTE');`,
       [idTasaOficial]
