@@ -339,20 +339,23 @@ app.post('/api/tasas/factores', async (req, res) => {
   }
 });
 
-// Endpoints complementarios (Filtro flexible de imágenes RAW)
+// Endpoint complementario: Búsqueda flexible de imágenes RAW
 app.get('/api/raw-imagenes', async (req, res) => {
   try {
     const instancia = req.query.instancia || 'JOHN';
     const { rows } = await pool.query(
       `SELECT id, hash_largo, hash_corto, grupo_raw, usuario_raw, nombre_push, caption, url_imagen, COALESCE(conteo, 1) AS conteo, estado, instancia, created_at, timestamp_msg
        FROM registros_raw 
-       WHERE (LOWER(instancia) = LOWER($1) OR instancia IS NULL OR instancia = '')
-         AND url_imagen IS NOT NULL AND url_imagen != '' 
+       WHERE (TRIM(instancia) ILIKE '%' || TRIM($1) || '%' OR instancia IS NULL OR TRIM(instancia) = '')
+         AND url_imagen IS NOT NULL 
+         AND TRIM(url_imagen) != '' 
        ORDER BY id DESC LIMIT 60`,
       [instancia]
     );
     res.json({ success: true, count: rows.length, rows });
-  } catch (err) { res.status(500).json({ success: false, error: err.message }); }
+  } catch (err) { 
+    res.status(500).json({ success: false, error: err.message }); 
+  }
 });
 
 app.get('/api/asesores', async (req, res) => {
