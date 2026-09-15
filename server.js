@@ -4,7 +4,6 @@ const path = require('path');
 
 const app = express();
 app.use(express.json({ limit: '10mb' }));
-
 app.use(express.static(__dirname));
 
 const pool = new Pool({
@@ -13,6 +12,9 @@ const pool = new Pool({
   user: process.env.DB_USER || 'postgres',
   password: String(process.env.DB_PASSWORD || ''),
   database: process.env.DB_NAME || 'automatizaciones',
+  max: 20,
+  idleTimeoutMillis: 10000,
+  connectionTimeoutMillis: 4000,
 });
 
 pool.on('error', (err) => {
@@ -62,9 +64,7 @@ async function initTasasJZ() {
       CREATE INDEX IF NOT EXISTS idx_jz_notificaciones_id_tasa ON jz_notificaciones(id_tasa);
     `);
 
-    await pool.query(`
-      ALTER TABLE jz_mercado_tasas ALTER COLUMN timestamp DROP NOT NULL;
-    `).catch(() => {});
+    await pool.query(`ALTER TABLE jz_mercado_tasas ALTER COLUMN timestamp DROP NOT NULL;`).catch(() => {});
 
     await pool.query(`
       INSERT INTO jz_lotes (id_tasa, correo_zelle, timestamp)
@@ -89,7 +89,7 @@ async function initTasasJZ() {
         ('USD', 'COP', 0.8800), ('USD', 'PEN', 0.9000), ('COP', 'PEN', 0.8800);
       `);
     }
-    console.log('✅ [Remesas-JZ] Tablas normalizadas e inicializadas correctamente.');
+    console.log('✅ [Remesas-JZ] Tablas verificadas correctamente.');
   } catch (err) {
     console.error('❌ Error inicializando tablas de tasas JZ:', err.message);
   }
@@ -150,8 +150,6 @@ app.post('/api/tasas/binance', async (req, res) => {
             const promedio = precios.reduce((a, b) => a + b, 0) / precios.length;
             ratesObj[fiat] = Number(promedio.toFixed(2));
           }
-        } else {
-          console.warn(`⚠️ Binance P2P HTTP ${response.status} para ${fiat}`);
         }
       } catch (e) {
         console.error(`❌ Error Binance (${fiat}):`, e.message);
@@ -244,7 +242,7 @@ app.get('/api/tasas/fetch-hoo', async (req, res) => {
   }
 });
 
-// 5. Promocionar borrador a lote oficial y notificar
+// 5. Promocionar borrador a lote oficial
 app.post('/api/tasas/publicar', async (req, res) => {
   const client = await pool.connect();
   try {
@@ -336,51 +334,47 @@ app.post('/api/tasas/factores', async (req, res) => {
   }
 });
 
-// 🔥 ENDPOINT A PRUEBA DE FALLOS: BÚSQUEDA MULTI-TABLA PARA IMÁGENES RAW
+// 7. BÚSQUEDA DE IMÁGENES RAW (Ultra-Rápida con fallback)
 app.get('/api/raw-imagenes', async (req, res) => {
   try {
-    // 1. Intento primario: consultar registros_raw
-    let rawResult = await pool.query(`SELECT * FROM registros_raw ORDER BY id DESC LIMIT 100`).catch(() => ({ rows: [] }));
+    let rawResult = await pool.query(`
+      SELECT id, hash_largo, hash_corto, grupo_raw, usuario_raw, nombre_push, caption, url_imagen, COALESCE(conteo, 1) AS conteo, estado, instancia, created_at
+      FROM registros_raw 
+      WHERE url_imagen IS NOT NULL AND TRIM(CAST(url_imagen AS text)) != '' 
+      ORDER BY id DESC LIMIT 60
+    `).catch(() => ({ rows: [] }));
+
     let rows = rawResult.rows || [];
 
-    // 2. Fallback secundario: Si registros_raw está vacía, consultar la tabla registros (donde hiperlink tiene los comprobantes)
+    // Fallback a la tabla registros si registros_raw no devuelve filas
     if (rows.length === 0) {
-      const regFallback = await pool.query(
-        `SELECT id, hash_corto, nombre_asesor AS nombre_push, titular AS usuario_raw, banco AS grupo_raw, 
-                monto::text AS caption, hiperlink AS url_imagen, estado_proceso AS estado, created_at 
-         FROM registros 
-         WHERE hiperlink IS NOT NULL AND TRIM(hiperlink) != '' 
-         ORDER BY id DESC LIMIT 100`
-      ).catch(() => ({ rows: [] }));
+      const regFallback = await pool.query(`
+        SELECT id, hash_corto, nombre_asesor AS nombre_push, titular AS usuario_raw, banco AS grupo_raw, 
+               monto::text AS caption, hiperlink AS url_imagen, estado_proceso AS estado, created_at 
+        FROM registros 
+        WHERE hiperlink IS NOT NULL AND TRIM(hiperlink) != '' 
+        ORDER BY id DESC LIMIT 60
+      `).catch(() => ({ rows: [] }));
       rows = regFallback.rows || [];
     }
 
-    // 3. Normalización flexible de columnas
-    const normalized = rows.map((r) => {
-      const url = r.url_imagen || r.url || r.imagen_url || r.media_url || r.link || r.hiperlink || r.archivo || r.foto || '';
-      const hashLargo = r.hash_largo || r.hash || '';
-      const hashCorto = r.hash_corto || (hashLargo ? hashLargo.substring(0, 12) : '') || `#${r.id}`;
+    const normalized = rows.map((r) => ({
+      id: r.id,
+      hash_largo: r.hash_largo || r.hash || '',
+      hash_corto: r.hash_corto || `#${r.id}`,
+      grupo_raw: r.grupo_raw || 'Chat Directo',
+      usuario_raw: r.usuario_raw || 'Cliente',
+      nombre_push: r.nombre_push || r.usuario_raw || 'Desconocido',
+      caption: r.caption || 'Sin texto...',
+      url_imagen: r.url_imagen || r.hiperlink || '',
+      conteo: r.conteo || 1,
+      estado: r.estado || 'PROCESADO',
+      instancia: r.instancia || 'JOHN',
+      created_at: r.created_at || new Date()
+    }));
 
-      return {
-        id: r.id,
-        hash_largo: hashLargo,
-        hash_corto: hashCorto,
-        grupo_raw: r.grupo_raw || r.grupo || r.chat_jid || r.jid || 'Chat Directo',
-        usuario_raw: r.usuario_raw || r.usuario || r.sender || 'Cliente',
-        nombre_push: r.nombre_push || r.push_name || r.nombre || r.usuario_raw || 'Desconocido',
-        caption: r.caption || r.texto || r.message || '',
-        url_imagen: url,
-        conteo: r.conteo || r.count || 1,
-        estado: r.estado || 'PROCESADO',
-        instancia: r.instancia || 'JOHN',
-        created_at: r.created_at || new Date()
-      };
-    });
-
-    console.log(`📸 [/api/raw-imagenes] Registros procesados listos para renderizar: ${normalized.length}`);
     res.json({ success: true, count: normalized.length, rows: normalized });
   } catch (err) {
-    console.error('❌ Error en /api/raw-imagenes:', err.message);
     res.status(500).json({ success: false, error: err.message });
   }
 });
