@@ -89,7 +89,7 @@ async function initTasasJZ() {
         ('USD', 'COP', 0.8800), ('USD', 'PEN', 0.9000), ('COP', 'PEN', 0.8800);
       `);
     }
-    console.log('✅ [Remesas-JZ] Tablas normalizadas y lotes sincronizados con éxito.');
+    console.log('✅ [Remesas-JZ] Tablas normalizadas e inicializadas correctamente.');
   } catch (err) {
     console.error('❌ Error inicializando tablas de tasas JZ:', err.message);
   }
@@ -336,34 +336,48 @@ app.post('/api/tasas/factores', async (req, res) => {
   }
 });
 
-// 🔥 ENDPOINT ULTRA-ROBUSTO: Consulta abierta con normalización de esquema en JS
+// 🔥 ENDPOINT A PRUEBA DE FALLOS: BÚSQUEDA MULTI-TABLA PARA IMÁGENES RAW
 app.get('/api/raw-imagenes', async (req, res) => {
   try {
-    const { rows } = await pool.query(`SELECT * FROM registros_raw ORDER BY id DESC LIMIT 100`);
+    // 1. Intento primario: consultar registros_raw
+    let rawResult = await pool.query(`SELECT * FROM registros_raw ORDER BY id DESC LIMIT 100`).catch(() => ({ rows: [] }));
+    let rows = rawResult.rows || [];
 
-    const normalized = rows
-      .map((r) => {
-        const url = r.url_imagen || r.url || r.imagen_url || r.media_url || r.link || '';
-        const hashLargo = r.hash_largo || r.hash || '';
-        const hashCorto = r.hash_corto || (hashLargo ? hashLargo.substring(0, 12) : '') || `#${r.id}`;
+    // 2. Fallback secundario: Si registros_raw está vacía, consultar la tabla registros (donde hiperlink tiene los comprobantes)
+    if (rows.length === 0) {
+      const regFallback = await pool.query(
+        `SELECT id, hash_corto, nombre_asesor AS nombre_push, titular AS usuario_raw, banco AS grupo_raw, 
+                monto::text AS caption, hiperlink AS url_imagen, estado_proceso AS estado, created_at 
+         FROM registros 
+         WHERE hiperlink IS NOT NULL AND TRIM(hiperlink) != '' 
+         ORDER BY id DESC LIMIT 100`
+      ).catch(() => ({ rows: [] }));
+      rows = regFallback.rows || [];
+    }
 
-        return {
-          id: r.id,
-          hash_largo: hashLargo,
-          hash_corto: hashCorto,
-          grupo_raw: r.grupo_raw || r.grupo || r.chat_jid || r.jid || '',
-          usuario_raw: r.usuario_raw || r.usuario || r.sender || '',
-          nombre_push: r.nombre_push || r.push_name || r.nombre || r.usuario_raw || '',
-          caption: r.caption || r.texto || r.message || '',
-          url_imagen: url,
-          conteo: r.conteo || r.count || 1,
-          estado: r.estado || 'PROCESADO',
-          instancia: r.instancia || 'JOHN',
-          created_at: r.created_at || r.fecha || new Date()
-        };
-      })
-      .filter((r) => r.url_imagen && String(r.url_imagen).trim() !== '');
+    // 3. Normalización flexible de columnas
+    const normalized = rows.map((r) => {
+      const url = r.url_imagen || r.url || r.imagen_url || r.media_url || r.link || r.hiperlink || r.archivo || r.foto || '';
+      const hashLargo = r.hash_largo || r.hash || '';
+      const hashCorto = r.hash_corto || (hashLargo ? hashLargo.substring(0, 12) : '') || `#${r.id}`;
 
+      return {
+        id: r.id,
+        hash_largo: hashLargo,
+        hash_corto: hashCorto,
+        grupo_raw: r.grupo_raw || r.grupo || r.chat_jid || r.jid || 'Chat Directo',
+        usuario_raw: r.usuario_raw || r.usuario || r.sender || 'Cliente',
+        nombre_push: r.nombre_push || r.push_name || r.nombre || r.usuario_raw || 'Desconocido',
+        caption: r.caption || r.texto || r.message || '',
+        url_imagen: url,
+        conteo: r.conteo || r.count || 1,
+        estado: r.estado || 'PROCESADO',
+        instancia: r.instancia || 'JOHN',
+        created_at: r.created_at || new Date()
+      };
+    });
+
+    console.log(`📸 [/api/raw-imagenes] Registros procesados listos para renderizar: ${normalized.length}`);
     res.json({ success: true, count: normalized.length, rows: normalized });
   } catch (err) {
     console.error('❌ Error en /api/raw-imagenes:', err.message);
