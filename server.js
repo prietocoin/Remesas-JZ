@@ -108,9 +108,10 @@ async function initTasasJZ() {
 }
 initTasasJZ();
 
-// 1. BÚSQUEDA DE IMÁGENES RAW CORREGIDA (Usa timestamp_msg y estructura real de registros_raw)
+// 1. BÚSQUEDA DE IMÁGENES RAW (Filtrado por Instancia JOHN)
 app.get('/api/raw-imagenes', async (req, res) => {
   try {
+    const instanciaFiltro = String(req.query.instancia || 'JOHN').toUpperCase().trim();
     let rows = [];
 
     const rawRes = await pool.query(`
@@ -118,15 +119,16 @@ app.get('/api/raw-imagenes', async (req, res) => {
              url_imagen, COALESCE(conteo, 1) AS conteo, estado, instancia, timestamp_msg
       FROM registros_raw 
       WHERE url_imagen IS NOT NULL AND TRIM(CAST(url_imagen AS text)) != ''
+        AND UPPER(COALESCE(instancia, 'JOHN')) LIKE $1
       ORDER BY timestamp_msg DESC LIMIT 60
-    `).catch(err => {
+    `, [`%${instanciaFiltro}%`]).catch(err => {
       console.warn('⚠️ Fallo consulta en registros_raw:', err.message);
       return { rows: [] };
     });
 
     rows = rawRes.rows || [];
 
-    // Fallback secundario a la tabla registros si registros_raw no tiene imágenes
+    // Fallback secundario a la tabla registros si registros_raw no devuelve filas
     if (rows.length === 0) {
       const regFallback = await pool.query(`
         SELECT id, hash_corto, nombre_asesor AS nombre_push, titular AS usuario_raw, 
