@@ -173,7 +173,7 @@ app.get('/api/raw-imagenes', async (req, res) => {
   }
 });
 
-// 2. ENDPOINT LECTURA IA (FUSIÓN: RAW + DIRECTORIO + COMPROBANTES_TEST)
+// 2. ENDPOINT LECTURA IA (CORREGIDO CON ESTRUCTURA REAL DE COMPROBANTES_TEST)
 app.get('/api/lecturas-ia', async (req, res) => {
   try {
     const instanciaFiltro = String(req.query.instancia || 'JOHN').toUpperCase().trim();
@@ -201,11 +201,11 @@ app.get('/api/lecturas-ia', async (req, res) => {
         c.estado_proceso AS ia_estado
       FROM registros_raw r
       LEFT JOIN directorio d 
-        ON (TRIM(r.grupo_raw) = TRIM(d.id_grupo))
+        ON (r.grupo_raw IS NOT NULL AND d.id_grupo IS NOT NULL AND TRIM(CAST(r.grupo_raw AS text)) = TRIM(CAST(d.id_grupo AS text)))
       LEFT JOIN comprobantes_test c 
-        ON (TRIM(r.hash_corto) = TRIM(c.hash_corto) OR TRIM(r.hash_largo) = TRIM(c.hash_largo))
+        ON (r.hash_largo IS NOT NULL AND c.hash_largo IS NOT NULL AND TRIM(CAST(r.hash_largo AS text)) = TRIM(CAST(c.hash_largo AS text)))
       WHERE r.url_imagen IS NOT NULL AND TRIM(CAST(r.url_imagen AS text)) != ''
-        AND UPPER(COALESCE(r.instancia, 'JOHN')) LIKE $1
+        AND (r.instancia IS NULL OR UPPER(CAST(r.instancia AS text)) LIKE $1)
       ORDER BY r.timestamp_msg DESC 
       LIMIT 50
     `, [`%${instanciaFiltro}%`]);
@@ -220,7 +220,7 @@ app.get('/api/lecturas-ia', async (req, res) => {
 
       return {
         id: r.hash_corto || r.hash_largo || (idx + 1),
-        hash_corto: r.hash_corto || 'Sin Hash',
+        hash_corto: r.hash_corto || (r.hash_largo ? r.hash_largo.substring(0, 8) : 'Sin Hash'),
         url_imagen: r.url_imagen,
         nombre_push: r.nombre_push || r.usuario_raw || 'Desconocido',
         grupo_raw: r.grupo_raw || 'Chat Directo',
