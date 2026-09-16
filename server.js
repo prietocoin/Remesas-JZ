@@ -173,28 +173,72 @@ app.get('/api/raw-imagenes', async (req, res) => {
   }
 });
 
-// 2. ENDPOINT PARA LECTURA IA (NUEVO)
+// 2. ENDPOINT LECTURA IA (FUSIÓN: RAW + DIRECTORIO + COMPROBANTES_TEST)
 app.get('/api/lecturas-ia', async (req, res) => {
   try {
+    const instanciaFiltro = String(req.query.instancia || 'JOHN').toUpperCase().trim();
+
     const { rows } = await pool.query(`
       SELECT 
-        id, 
-        hash_corto, 
-        hiperlink AS url_imagen, 
-        nombre_asesor, 
-        titular, 
-        monto, 
-        moneda, 
-        banco, 
-        tasa, 
-        estado_proceso AS estado, 
-        created_at 
-      FROM registros 
-      WHERE hiperlink IS NOT NULL AND TRIM(hiperlink) != ''
-      ORDER BY id DESC LIMIT 50
-    `);
+        r.hash_largo, 
+        r.hash_corto, 
+        r.url_imagen, 
+        r.nombre_push, 
+        r.usuario_raw, 
+        r.grupo_raw, 
+        r.caption, 
+        r.timestamp_msg,
+        r.estado AS estado_raw,
+        d.nombre AS directorio_nombre,
+        d.roles AS directorio_rol,
+        d.moneda_socio AS directorio_moneda,
+        d.porcentaje_comision AS directorio_comision,
+        c.monto AS ia_monto,
+        c.banco AS ia_banco,
+        c.titular AS ia_titular,
+        c.moneda AS ia_moneda,
+        c.tasa AS ia_tasa,
+        c.estado_proceso AS ia_estado
+      FROM registros_raw r
+      LEFT JOIN directorio d 
+        ON (TRIM(r.grupo_raw) = TRIM(d.id_grupo))
+      LEFT JOIN comprobantes_test c 
+        ON (TRIM(r.hash_corto) = TRIM(c.hash_corto) OR TRIM(r.hash_largo) = TRIM(c.hash_largo))
+      WHERE r.url_imagen IS NOT NULL AND TRIM(CAST(r.url_imagen AS text)) != ''
+        AND UPPER(COALESCE(r.instancia, 'JOHN')) LIKE $1
+      ORDER BY r.timestamp_msg DESC 
+      LIMIT 50
+    `, [`%${instanciaFiltro}%`]);
 
-    res.json({ success: true, count: rows.length, rows });
+    const normalized = rows.map((r, idx) => {
+      let fecha = new Date();
+      if (r.timestamp_msg) {
+        let ts = Number(r.timestamp_msg);
+        if (ts < 1e11) ts *= 1000;
+        fecha = new Date(ts);
+      }
+
+      return {
+        id: r.hash_corto || r.hash_largo || (idx + 1),
+        hash_corto: r.hash_corto || 'Sin Hash',
+        url_imagen: r.url_imagen,
+        nombre_push: r.nombre_push || r.usuario_raw || 'Desconocido',
+        grupo_raw: r.grupo_raw || 'Chat Directo',
+        caption: r.caption || '',
+        created_at: fecha.toISOString(),
+        directorio_nombre: r.directorio_nombre || null,
+        directorio_rol: r.directorio_rol || 'Socio',
+        directorio_moneda: r.directorio_moneda || 'USD',
+        ia_monto: r.ia_monto || null,
+        ia_banco: r.ia_banco || null,
+        ia_titular: r.ia_titular || null,
+        ia_moneda: r.ia_moneda || 'USD',
+        ia_tasa: r.ia_tasa || null,
+        ia_estado: r.ia_estado || r.estado_raw || 'PROCESADO'
+      };
+    });
+
+    res.json({ success: true, count: normalized.length, rows: normalized });
   } catch (err) {
     console.error('❌ Error en /api/lecturas-ia:', err.message);
     res.status(500).json({ success: false, error: err.message });
