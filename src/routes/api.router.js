@@ -1,0 +1,32 @@
+const { Router } = require('express');
+const lotesController = require('../modules/lotes/lotes.controller');
+const matrizController = require('../modules/matriz/matriz.controller');
+const visorController = require('../modules/visor/visor.controller');
+const directorioController = require('../modules/directorio/directorio.controller');
+
+const router = Router();
+
+// Módulo Lotes & Tasas
+router.get('/tasas/ultimas', (req, res) => lotesController.getUltimasTasas(req, res));
+router.post('/tasas/binance', (req, res) => lotesController.syncBinance(req, res));
+router.post('/tasas/n8n-webhook', (req, res) => lotesController.webhookN8N(req, res));
+router.get('/tasas/fetch-hoo', (req, res) => lotesController.getBorrador(req, res));
+router.post('/tasas/publicar', (req, res) => lotesController.publicar(req, res));
+
+// Módulo Matriz & Factores
+router.get('/tasas/factores', (req, res) => matrizController.getFactores(req, res));
+router.post('/tasas/factores', (req, res) => matrizController.updateFactores(req, res));
+
+// Módulo Directorio
+router.get('/directorio/grupo/:id_grupo', (req, res) => directorioController.getSocioByGrupo(req, res));
+
+// Módulo Visor & Auditoría (Instancia JOHN)
+router.get('/raw-imagenes', (req, res) => visorController.getRawImagenes(req, res));
+router.get('/lecturas-ia', (req, res) => visorController.getLecturasIA(req, res));
+router.get('/asesores', (req, res) => visorController.getAsesores(req, res));
+router.get('/hashes', (req, res) => visorController.getHashes(req, res));
+router.get('/remesas', (req, res) => visorController.getRemesas(req, res));
+router.get('/tabla/:nombre', (req, res) => visorController.getTablaGenerica(req, res));
+router.put('/remesas/:id', (req, res) => visorController.updateRemesa(req, res));
+
+module.exports = router;
