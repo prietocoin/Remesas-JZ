@@ -1,11 +1,16 @@
 {
-  "name": "remesas-app",
+  "name": "remesas-jz-john",
   "version": "1.0.0",
+  "description": "Microservicio modular de tasas y visor para la instancia JOHN",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js"
+    "start": "node server.js",
+    "worker": "node worker.js",
+    "start:all": "node server.js & node worker.js"
   },
   "dependencies": {
+    "bullmq": "^5.1.0",
+    "dotenv": "^16.4.5",
     "express": "^4.18.2",
     "pg": "^8.11.3"
   }
