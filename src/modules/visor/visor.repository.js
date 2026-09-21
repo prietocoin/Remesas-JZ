@@ -2,7 +2,6 @@ const { pool } = require('../../config/db');
 
 class VisorRepository {
   async obtenerRawImagenes(instancia = 'JOHN') {
-    const filtro = `%${instancia.toUpperCase().trim()}%`;
     try {
       const { rows } = await pool.query(`
         SELECT 
@@ -24,13 +23,8 @@ class VisorRepository {
           OR (r.usuario_raw IS NOT NULL AND d.id_grupo IS NOT NULL AND TRIM(CAST(r.usuario_raw AS text)) = TRIM(CAST(d.id_grupo AS text)))
         )
         WHERE r.url_imagen IS NOT NULL AND TRIM(CAST(r.url_imagen AS text)) != ''
-          AND (
-            r.instancia IS NULL 
-            OR UPPER(CAST(r.instancia AS text)) LIKE $1
-            OR d.id_grupo IS NOT NULL
-          )
         ORDER BY r.id DESC LIMIT 100
-      `, [filtro]);
+      `);
 
       const agrupadosMap = new Map();
 
@@ -77,7 +71,6 @@ class VisorRepository {
   }
 
   async obtenerLecturasIA(instancia = 'JOHN') {
-    const filtro = `%${instancia.toUpperCase().trim()}%`;
     try {
       const { rows } = await pool.query(`
         SELECT 
@@ -104,9 +97,8 @@ class VisorRepository {
           (r.grupo_raw IS NOT NULL AND d.id_grupo IS NOT NULL AND TRIM(CAST(r.grupo_raw AS text)) = TRIM(CAST(d.id_grupo AS text)))
           OR (c.instancia IS NOT NULL AND d.id_grupo IS NOT NULL AND TRIM(CAST(c.instancia AS text)) = TRIM(CAST(d.id_grupo AS text)))
         )
-        WHERE (c.instancia IS NULL OR UPPER(CAST(c.instancia AS text)) LIKE $1 OR d.id_grupo IS NOT NULL)
         ORDER BY c.creado_en DESC LIMIT 50
-      `, [filtro]);
+      `);
       return rows;
     } catch (err) {
       console.error('Error al consultar comprobantes_raw:', err.message);
