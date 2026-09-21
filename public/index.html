@@ -113,7 +113,7 @@
               <h1 class="text-base sm:text-xl font-bold tracking-wide leading-tight capitalize" x-text="tablaActiva === 'registros' ? 'Visor de Remesas' : (tablaActiva === 'tasas_mercado' ? 'Gestión de Tasas Mercado' : (tablaActiva === 'imagenes_john' ? 'Monitor RAW WhatsApp (JOHN)' : (tablaActiva === 'lectura_ia' ? 'Lectura & Extracción IA' : (tablaActiva === 'directorio' ? 'Directorio (Socios)' : tablaActiva.replace('_', ' ')))))"></h1>
             </div>
           </div>
-          <span class="text-xs bg-zorrilla-dark px-2.5 py-1 rounded-full text-blue-200 border border-zorrilla font-medium shrink-0" x-text="tablaActiva === 'registros' ? remesas.length + ' regs' : (tablaActiva === 'tasas_mercado' ? 'Motor Activo' : (tablaActiva === 'imagenes_john' ? datosImagenesJohn.length + ' imágenes' : (tablaActiva === 'lectura_ia' ? datosLecturaIA.length + ' cruzados' : datosGenericos.length + ' regs')))"></span>
+          <span class="text-xs bg-zorrilla-dark px-2.5 py-1 rounded-full text-blue-200 border border-zorrilla font-medium shrink-0" x-text="tablaActiva === 'registros' ? remesas.length + ' regs' : (tablaActiva === 'tasas_mercado' ? 'Motor Activo' : (tablaActiva === 'imagenes_john' ? datosImagenesJohn.length + ' imágenes' : (tablaActiva === 'lectura_ia' ? datosLecturaIA.length + ' cruzados' : (tablaActiva === 'directorio' ? datosDirectorio.length + ' socios' : datosGenericos.length + ' regs'))))"></span>
         </div>
         
         <div x-show="tablaActiva === 'registros'" class="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs sm:text-sm">
@@ -317,7 +317,7 @@
           <div class="flex justify-between items-center border-b border-gray-100 pb-3">
             <div>
               <h3 class="text-xs font-bold text-indigo-900 uppercase tracking-wider">Comisión por Par (%)</h3>
-              <p class="text-[10px] text-gray-400">Pares oficiales configurados para JOHN (Valor calculado en verde)</p>
+              <p class="text-[10px] text-gray-400">Pares oficiales configurados para JOHN (Valor calculated en verde)</p>
             </div>
             <button @click="abrirModalNuevoPar()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs px-3 py-1.5 rounded-lg shadow transition flex items-center gap-1">
               <span>+ Agregar Par</span>
@@ -506,8 +506,85 @@
         </div>
       </div>
 
+      <!-- VISTA ESPECIALIZADA: DIRECTORIO (SOCIOS) EDITABLE -->
+      <div x-show="tablaActiva === 'directorio'" x-cloak class="max-w-6xl mx-auto space-y-4">
+        <div class="flex justify-between items-center bg-white p-4 rounded-lg shadow border border-gray-200">
+          <div>
+            <h2 class="text-base font-bold text-gray-800 flex items-center gap-2">
+              <span>👥</span> Directorio de Socios
+            </h2>
+            <p class="text-xs text-gray-500">Gestión editable en tiempo real de la tabla `jz_directorio`</p>
+          </div>
+          <div class="flex gap-2 items-center">
+            <button @click="nuevoSocioDirectorio()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs px-3.5 py-2 rounded-lg shadow transition flex items-center gap-1">
+              <span>➕ Agregar Socio</span>
+            </button>
+            <button @click="cargarDirectorio()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs px-3 py-2 rounded-lg shadow transition">
+              🔄 Refrescar
+            </button>
+          </div>
+        </div>
+
+        <div class="bg-white rounded-lg shadow border border-gray-200 overflow-hidden">
+          <div class="overflow-x-auto w-full">
+            <table class="w-full text-left border-collapse min-w-[800px]">
+              <thead class="bg-gray-50 border-b text-xs text-gray-500 uppercase">
+                <tr>
+                  <th class="p-3 font-bold">JID / ID Grupo</th>
+                  <th class="p-3 font-bold">Nombre</th>
+                  <th class="p-3 font-bold">Rol</th>
+                  <th class="p-3 font-bold">Moneda</th>
+                  <th class="p-3 font-bold">Grupo</th>
+                  <th class="p-3 font-bold">% Comisión</th>
+                  <th class="p-3 font-bold">Descuento</th>
+                  <th class="p-3 font-bold text-center">Acciones</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-gray-200 text-xs">
+                <template x-for="item in datosDirectorio" :key="item.id_grupo">
+                  <tr class="hover:bg-gray-50 transition-colors">
+                    <td class="p-2 font-mono text-[11px] font-bold text-indigo-900">
+                      <span x-text="item.id_grupo"></span>
+                    </td>
+                    <td class="p-2">
+                      <input type="text" x-model="item.nombre" class="w-full border border-gray-300 p-1.5 rounded text-xs font-semibold focus:ring-1 focus:ring-indigo-500 outline-none">
+                    </td>
+                    <td class="p-2">
+                      <input type="text" x-model="item.roles" class="w-20 border border-gray-300 p-1.5 rounded text-xs focus:ring-1 focus:ring-indigo-500 outline-none">
+                    </td>
+                    <td class="p-2">
+                      <input type="text" x-model="item.moneda_socio" class="w-16 border border-gray-300 p-1.5 rounded text-xs uppercase font-bold text-indigo-700 focus:ring-1 focus:ring-indigo-500 outline-none">
+                    </td>
+                    <td class="p-2">
+                      <input type="text" x-model="item.grupo" class="w-full border border-gray-300 p-1.5 rounded text-xs focus:ring-1 focus:ring-indigo-500 outline-none">
+                    </td>
+                    <td class="p-2">
+                      <input type="text" x-model="item.porcentaje_comision" class="w-16 border border-gray-300 p-1.5 rounded text-xs text-center font-bold text-emerald-700 focus:ring-1 focus:ring-indigo-500 outline-none">
+                    </td>
+                    <td class="p-2">
+                      <input type="text" x-model="item.descuento" class="w-16 border border-gray-300 p-1.5 rounded text-xs text-center focus:ring-1 focus:ring-indigo-500 outline-none">
+                    </td>
+                    <td class="p-2 text-center space-x-1">
+                      <button @click="guardarSocioDirectorio(item)" class="bg-emerald-600 hover:bg-emerald-700 text-white px-2.5 py-1.5 rounded font-bold text-xs transition shadow-sm" title="Guardar Cambios">
+                        💾
+                      </button>
+                      <button @click="eliminarSocioDirectorio(item.id_grupo)" class="bg-rose-600 hover:bg-rose-700 text-white px-2.5 py-1.5 rounded font-bold text-xs transition shadow-sm" title="Eliminar Socio">
+                        🗑️
+                      </button>
+                    </td>
+                  </tr>
+                </template>
+                <tr x-show="datosDirectorio.length === 0">
+                  <td colspan="8" class="p-8 text-center text-gray-400 italic">No hay socios registrados en el directorio. Presiona "+ Agregar Socio".</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
       <!-- VISTA GENÉRICA -->
-      <div x-show="tablaActiva !== 'registros' && tablaActiva !== 'tasas_mercado' && tablaActiva !== 'imagenes_john' && tablaActiva !== 'lectura_ia'" x-cloak class="max-w-full mx-auto">
+      <div x-show="tablaActiva !== 'registros' && tablaActiva !== 'tasas_mercado' && tablaActiva !== 'imagenes_john' && tablaActiva !== 'lectura_ia' && tablaActiva !== 'directorio'" x-cloak class="max-w-full mx-auto">
         <div class="bg-white rounded-lg shadow overflow-hidden">
           <div class="p-4 border-b border-gray-100 flex justify-between items-center bg-gray-50">
             <h2 class="font-bold text-gray-700 capitalize flex items-center gap-2">
@@ -701,6 +778,7 @@
         nuevoParForm: { orig: '', dest: '', comision: 10 },
         datosImagenesJohn: [],
         datosLecturaIA: [],
+        datosDirectorio: [],
         cargandoBinance: false,
 
         paresBaseJZ: [
@@ -787,6 +865,86 @@
           }
         },
 
+        async cargarDirectorio() {
+          try {
+            const res = await this.fetchConTimeout('/api/directorio');
+            const data = await res.json();
+            if (data && data.success) {
+              this.datosDirectorio = data.rows || [];
+            }
+          } catch (e) {
+            console.warn('Error al cargar directorio:', e.message);
+          }
+        },
+
+        async guardarSocioDirectorio(item) {
+          try {
+            const res = await fetch(`/api/directorio/${encodeURIComponent(item.id_grupo)}`, {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(item)
+            });
+            const data = await res.json();
+            if (res.ok && data.success) {
+              alert('✅ Socio actualizado correctamente.');
+              await this.cargarDirectorio();
+            } else {
+              alert('❌ Error al actualizar socio: ' + (data.error || 'Error desconocido'));
+            }
+          } catch (e) {
+            alert('❌ Error de conexión al guardar el socio.');
+          }
+        },
+
+        async nuevoSocioDirectorio() {
+          const idGrupo = prompt('Ingrese el JID / ID de grupo del socio:');
+          if (!idGrupo || !idGrupo.trim()) return;
+
+          const payload = {
+            id_grupo: idGrupo.trim(),
+            nombre: 'Nuevo Socio',
+            roles: 'Socio',
+            moneda_socio: 'USD',
+            grupo: '',
+            porcentaje_comision: '0',
+            descuento: '0',
+            moneda_base: 'USD'
+          };
+
+          try {
+            const res = await fetch('/api/directorio', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(payload)
+            });
+            const data = await res.json();
+            if (res.ok && data.success) {
+              alert('✅ Socio agregado exitosamente.');
+              await this.cargarDirectorio();
+            } else {
+              alert('❌ Error al agregar socio: ' + (data.error || 'Error desconocido'));
+            }
+          } catch (e) {
+            alert('❌ Error al crear socio.');
+          }
+        },
+
+        async eliminarSocioDirectorio(id_grupo) {
+          if (!confirm(`¿Eliminar al socio con ID "${id_grupo}"?`)) return;
+          try {
+            const res = await fetch(`/api/directorio/${encodeURIComponent(id_grupo)}`, { method: 'DELETE' });
+            const data = await res.json();
+            if (res.ok && data.success) {
+              alert('🗑️ Socio eliminado correctamente.');
+              await this.cargarDirectorio();
+            } else {
+              alert('❌ Error al eliminar socio.');
+            }
+          } catch (e) {
+            alert('❌ Error de conexión al eliminar socio.');
+          }
+        },
+
         async cambiarTabla(nombre) {
           this.tablaActiva = nombre;
           this.sidebarAbierto = false;
@@ -799,6 +957,8 @@
             await this.cargarImagenesJohn();
           } else if (nombre === 'lectura_ia') {
             await this.cargarLecturaIA();
+          } else if (nombre === 'directorio') {
+            await this.cargarDirectorio();
           } else if (nombre === 'registros') {
             await this.onFiltroPadreChange();
           } else {
@@ -885,7 +1045,6 @@
             case 'USD_COP': val = USD ? (1 / USD) * COP * f('USD', 'COP') : 0; break;
             case 'USD_PEN': val = USD ? (1 / USD) * PEN * f('USD', 'PEN') : 0; break;
 
-            // Uso de factores de comisión dinámicos desde la BD de JOHN
             case 'ZX_PEN_VES': val = rawPEN_VES * f('ZX_PEN', 'VES'); break;
             case 'JZ_PEN_VES': val = rawPEN_VES * f('JZ_PEN', 'VES'); break;
             case 'JZ_USD_VES': val = rawUSD_VES * f('JZ_USD', 'VES'); break;
@@ -912,6 +1071,7 @@
             }
           } catch (e) {
             alert('❌ Error de conexión o tiempo agotado.');
+          } font {
           } finally {
             this.cargandoBinance = false;
           }
