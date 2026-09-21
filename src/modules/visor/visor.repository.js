@@ -29,7 +29,8 @@ class VisorRepository {
     return rows;
   }
 
-  async obtenerLecturasIA() {
+ async obtenerLecturasIA(instancia = 'JOHN') {
+    const filtro = `%${instancia.toUpperCase().trim()}%`;
     try {
       const { rows } = await pool.query(`
         SELECT 
@@ -53,15 +54,15 @@ class VisorRepository {
         FROM comprobantes_raw c
         LEFT JOIN registros_raw r ON TRIM(CAST(c.hash_largo AS text)) = TRIM(CAST(r.hash_largo AS text))
         LEFT JOIN jz_directorio d ON (r.grupo_raw IS NOT NULL AND d.id_grupo IS NOT NULL AND TRIM(CAST(r.grupo_raw AS text)) = TRIM(CAST(d.id_grupo AS text)))
+        WHERE (c.instancia IS NULL OR UPPER(CAST(c.instancia AS text)) LIKE $1)
         ORDER BY c.creado_en DESC LIMIT 50
-      `);
+      `, [filtro]);
       return rows;
     } catch (err) {
       console.error('Error al consultar comprobantes_raw:', err.message);
       return [];
     }
   }
-
   async obtenerAsesores() {
     const { rows } = await pool.query("SELECT DISTINCT nombre_asesor FROM registros WHERE nombre_asesor IS NOT NULL AND nombre_asesor != '' ORDER BY nombre_asesor");
     return rows;
