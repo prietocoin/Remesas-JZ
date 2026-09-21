@@ -1,54 +1,69 @@
 const visorService = require('./visor.service');
-const visorRepo = require('./visor.repository');
 
 class VisorController {
-  async getRawImagenes(req, res) {
+  async obtenerRawImagenes(req, res) {
     try {
-      const rows = await visorService.getRawImagenes(req.query.instancia || 'JOHN');
-      res.json({ success: true, count: rows.length, rows });
+      const rows = await visorService.obtenerRawImagenes();
+      return res.json({ success: true, rows });
     } catch (err) {
-      res.status(500).json({ success: false, error: err.message });
+      console.error('Error en controller obtenerRawImagenes:', err);
+      return res.status(500).json({ success: false, error: err.message, rows: [] });
     }
   }
 
-  async getLecturasIA(req, res) {
+  async obtenerLecturasIA(req, res) {
     try {
-      const rows = await visorService.getLecturasIA(req.query.instancia || 'JOHN');
-      res.json({ success: true, count: rows.length, rows });
+      const rows = await visorService.obtenerLecturasIA();
+      return res.json({ success: true, rows });
     } catch (err) {
-      res.status(500).json({ success: false, error: err.message });
+      console.error('Error en controller obtenerLecturasIA:', err);
+      return res.status(500).json({ success: false, error: err.message, rows: [] });
     }
   }
 
-  async getAsesores(req, res) {
+  async obtenerAsesores(req, res) {
     try {
-      res.json(await visorRepo.obtenerAsesores());
-    } catch (err) { res.status(500).json({ error: err.message }); }
+      const rows = await visorService.obtenerAsesores();
+      return res.json(rows);
+    } catch (err) {
+      return res.status(500).json({ error: err.message });
+    }
   }
 
-  async getHashes(req, res) {
+  async obtenerHashes(req, res) {
     try {
-      res.json(await visorRepo.obtenerHashes(req.query));
-    } catch (err) { res.status(500).json({ error: err.message }); }
+      const rows = await visorService.obtenerHashes(req.query);
+      return res.json(rows);
+    } catch (err) {
+      return res.status(500).json({ error: err.message });
+    }
   }
 
-  async getRemesas(req, res) {
+  async obtenerRemesas(req, res) {
     try {
-      res.json(await visorRepo.obtenerRemesas(req.query));
-    } catch (err) { res.status(500).json({ error: err.message }); }
+      const rows = await visorService.obtenerRemesas(req.query);
+      return res.json(rows);
+    } catch (err) {
+      return res.status(500).json({ error: err.message });
+    }
   }
 
-  async getTablaGenerica(req, res) {
+  async obtenerTablaGenerica(req, res) {
     try {
-      res.json(await visorRepo.obtenerTablaGenerica(req.params.nombre));
-    } catch (err) { res.status(403).json({ error: err.message }); }
+      const rows = await visorService.obtenerTablaGenerica(req.params.tabla);
+      return res.json(rows);
+    } catch (err) {
+      return res.status(500).json({ error: err.message });
+    }
   }
 
-  async updateRemesa(req, res) {
+  async actualizarRemesa(req, res) {
     try {
-      await visorRepo.actualizarRemesa(req.params.id, req.body);
-      res.json({ success: true });
-    } catch (err) { res.status(500).json({ error: err.message }); }
+      await visorService.actualizarRemesa(req.params.id, req.body);
+      return res.json({ success: true });
+    } catch (err) {
+      return res.status(500).json({ error: err.message });
+    }
   }
 }
 
