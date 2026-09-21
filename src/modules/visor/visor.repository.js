@@ -1,7 +1,7 @@
 const { pool } = require('../../config/db');
 
 class VisorRepository {
-  async obtenerRawImagenes(instancia = 'JOHN') {
+  async obtenerRawImagenes() {
     try {
       const { rows } = await pool.query(`
         SELECT 
@@ -23,11 +23,9 @@ class VisorRepository {
           OR (r.usuario_raw IS NOT NULL AND d.id_grupo IS NOT NULL AND TRIM(CAST(r.usuario_raw AS text)) = TRIM(CAST(d.id_grupo AS text)))
         )
         WHERE r.url_imagen IS NOT NULL AND TRIM(CAST(r.url_imagen AS text)) != ''
-          AND (r.instancia IS NULL OR LOWER(CAST(r.instancia AS text)) LIKE '%jh%n%')
         ORDER BY r.id DESC LIMIT 100
       `);
 
-      // Agrupar varias lecturas del mismo Hash en 1 sola tarjeta
       const agrupadosMap = new Map();
 
       for (const r of rows) {
@@ -41,6 +39,10 @@ class VisorRepository {
             estado: r.estado,
             created_at: r.created_at,
             conteo: 1,
+            nombre_push: r.nombre_push,
+            usuario_raw: r.usuario_raw,
+            grupo_raw: r.grupo_raw,
+            caption: r.caption,
             impactos: [{
               nombre_push: r.nombre_push,
               usuario_raw: r.usuario_raw,
@@ -72,7 +74,7 @@ class VisorRepository {
     }
   }
 
-  async obtenerLecturasIA(instancia = 'JOHN') {
+  async obtenerLecturasIA() {
     try {
       const { rows } = await pool.query(`
         SELECT 
@@ -100,7 +102,6 @@ class VisorRepository {
           (r.grupo_raw IS NOT NULL AND d.id_grupo IS NOT NULL AND TRIM(CAST(r.grupo_raw AS text)) = TRIM(CAST(d.id_grupo AS text)))
           OR (c.instancia IS NOT NULL AND d.id_grupo IS NOT NULL AND TRIM(CAST(c.instancia AS text)) = TRIM(CAST(d.id_grupo AS text)))
         )
-        WHERE (c.instancia IS NULL OR LOWER(CAST(c.instancia AS text)) LIKE '%jh%n%')
         ORDER BY c.creado_en DESC LIMIT 50
       `);
       return rows;
