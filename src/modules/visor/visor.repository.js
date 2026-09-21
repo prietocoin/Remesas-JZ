@@ -1,14 +1,27 @@
 const { pool } = require('../../config/db');
 
 class VisorRepository {
-  async obtenerRawImagenes() {
+  /**
+   * Obtiene y agrupa imágenes de impactos_raw filtrando por instancia
+   */
+  async obtenerRawImagenes(instancia = 'JOHN') {
     try {
+      const term = (instancia || 'JOHN').trim().toLowerCase();
+      const pattern = `%${term}%`;
+      const altPattern = term.includes('john') ? '%jhon%' : '%john%';
+
       const { rows } = await pool.query(`
-        SELECT id, hash_largo, hash_corto, grupo_raw, usuario_raw, nombre_push, caption, url_imagen, estado, created_at
+        SELECT id, hash_largo, hash_corto, grupo_raw, usuario_raw, nombre_push, caption, url_imagen, estado, created_at, instancia
         FROM impactos_raw
         WHERE url_imagen IS NOT NULL AND TRIM(CAST(url_imagen AS text)) != ''
+          AND (
+            instancia IS NULL 
+            OR TRIM(CAST(instancia AS text)) = ''
+            OR LOWER(CAST(instancia AS text)) LIKE $1
+            OR LOWER(CAST(instancia AS text)) LIKE $2
+          )
         ORDER BY id DESC LIMIT 100
-      `);
+      `, [pattern, altPattern]);
 
       const map = new Map();
 
@@ -25,6 +38,10 @@ class VisorRepository {
             estado: r.estado || 'RECIBIDO',
             created_at: r.created_at,
             conteo: 1,
+            nombre_push: r.nombre_push || r.usuario_raw || 'Desconocido',
+            usuario_raw: r.usuario_raw,
+            grupo_raw: r.grupo_raw,
+            caption: r.caption,
             impactos: [{
               id: r.id,
               nombre_push: r.nombre_push || r.usuario_raw || 'Desconocido',
@@ -56,8 +73,15 @@ class VisorRepository {
     }
   }
 
-  async obtenerLecturasIA() {
+  /**
+   * Obtiene comprobantes_raw filtrando por instancia
+   */
+  async obtenerLecturasIA(instancia = 'JOHN') {
     try {
+      const term = (instancia || 'JOHN').trim().toLowerCase();
+      const pattern = `%${term}%`;
+      const altPattern = term.includes('john') ? '%jhon%' : '%john%';
+
       const { rows } = await pool.query(`
         SELECT 
           hash_largo,
@@ -71,8 +95,14 @@ class VisorRepository {
           estado_ia AS ia_estado,
           instancia
         FROM comprobantes_raw
+        WHERE (
+          instancia IS NULL 
+          OR TRIM(CAST(instancia AS text)) = ''
+          OR LOWER(CAST(instancia AS text)) LIKE $1
+          OR LOWER(CAST(instancia AS text)) LIKE $2
+        )
         ORDER BY creado_en DESC LIMIT 100
-      `);
+      `, [pattern, altPattern]);
 
       return rows.map(r => ({
         ...r,
