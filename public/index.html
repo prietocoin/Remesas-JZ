@@ -441,58 +441,73 @@
         </div>
 
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <template x-for="(item, idx) in datosLecturaIA" :key="item.hash_largo ? (item.hash_largo + '_' + idx) : idx">
-            <div class="bg-white rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-all overflow-hidden flex flex-col justify-between">
-              
-              <div class="p-3 bg-gray-50 border-b border-gray-100 flex justify-between items-center text-xs">
-                <div class="flex items-center gap-2 min-w-0">
-                  <span class="font-mono text-[11px] bg-indigo-100 text-indigo-900 border border-indigo-200 px-2 py-0.5 rounded font-bold" x-text="'#' + (item.hash_corto || 'Sin Hash')"></span>
-                  <span class="font-bold text-indigo-950 truncate" x-text="item.directorio_nombre ? '👥 ' + item.directorio_nombre : '📱 ' + (item.nombre_push || 'Desconocido')"></span>
-                </div>
-                <span class="px-2 py-0.5 text-[10px] font-bold rounded uppercase shrink-0" 
-                      :class="item.ia_estado === 'PROCESADO' || item.ia_estado === 'A' ? 'bg-emerald-100 text-emerald-800 border border-emerald-300' : 'bg-amber-100 text-amber-800 border border-amber-300'" 
-                      x-text="item.ia_estado || 'PENDIENTE'"></span>
+  <template x-for="(item, idx) in datosLecturaIA" :key="item.hash_largo || idx">
+    <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden flex flex-col justify-between">
+      
+      <!-- Cabecera -->
+      <div class="p-3 bg-gray-50 border-b border-gray-100 flex justify-between items-center text-xs">
+        <div class="flex items-center gap-2">
+          <span class="font-mono text-[11px] bg-indigo-100 text-indigo-900 border border-indigo-200 px-2 py-0.5 rounded font-bold" x-text="'#' + item.hash_corto"></span>
+          <span class="bg-indigo-50 text-indigo-800 border border-indigo-200 px-2 py-0.5 rounded text-[10px] font-bold" x-text="(item.impactos ? item.impactos.length : 0) + 'x'"></span>
+        </div>
+        <span class="px-2 py-0.5 text-[10px] font-bold rounded uppercase"
+              :class="item.ia_estado === 'PROCESADO' ? 'bg-emerald-100 text-emerald-800 border border-emerald-300' : 'bg-amber-100 text-amber-800 border border-amber-300'" 
+              x-text="item.ia_estado"></span>
+      </div>
+
+      <!-- Cuerpo -->
+      <div class="p-3.5 flex gap-3.5 items-start flex-1">
+        <!-- Imagen comprobante -->
+        <div class="w-32 h-44 bg-gray-100 rounded-lg overflow-hidden border border-gray-200 shrink-0 relative group">
+          <img :src="item.url_imagen" alt="Comprobante" class="w-full h-full object-cover">
+          <a :href="item.url_imagen" target="_blank" class="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white text-xs font-bold">🔍 Ampliar</a>
+        </div>
+
+        <!-- Información de Extracción y de Impactos -->
+        <div class="flex-1 space-y-2 text-xs min-w-0 max-h-56 overflow-y-auto pr-1">
+          
+          <!-- Lectura OCR / IA -->
+          <div class="bg-indigo-50/50 p-2 rounded-lg border border-indigo-100 space-y-1">
+            <span class="text-[9px] text-indigo-700 font-extrabold uppercase tracking-wider block">✨ Extracción IA</span>
+            <div class="grid grid-cols-2 gap-2">
+              <div>
+                <p class="text-[10px] text-gray-400 font-bold uppercase">Monto</p>
+                <p class="font-bold text-emerald-700 text-sm" x-text="item.ia_monto ? ((item.ia_moneda || '') + ' ' + Number(item.ia_monto).toFixed(2)) : 'Sin lectura'"></p>
               </div>
+              <div>
+                <p class="text-[10px] text-gray-400 font-bold uppercase">Banco</p>
+                <p class="font-semibold text-gray-800 truncate" x-text="item.ia_banco || 'No detectado'"></p>
+              </div>
+            </div>
+            <div>
+              <p class="text-[10px] text-gray-400 font-bold uppercase">Titular</p>
+              <p class="font-semibold text-gray-900 truncate" x-text="item.ia_titular || 'No detectado'"></p>
+            </div>
+          </div>
 
-              <div class="p-3.5 flex gap-3.5 items-start flex-1">
-                <div class="w-32 h-44 bg-gray-100 rounded-lg overflow-hidden border border-gray-200 shrink-0 relative group">
-                  <img :src="item.url_imagen" alt="Comprobante" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300">
-                  <a :href="item.url_imagen" target="_blank" class="absolute inset-0 bg-zorrilla/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white text-xs font-bold">🔍 Ampliar</a>
+          <!-- Múltiples Impactos WhatsApp (1x, 2x, etc.) -->
+          <div class="space-y-1.5 pt-1">
+            <template x-for="(imp, iIdx) in item.impactos" :key="iIdx">
+              <div class="bg-gray-50 p-2 rounded border border-gray-200 text-[10px] space-y-0.5">
+                <div class="flex justify-between font-bold text-indigo-900">
+                  <span x-text="'IMPACTO ' + (iIdx + 1) + 'X'"></span>
+                  <span x-text="imp.nombre_socio"></span>
                 </div>
+                <div class="flex justify-between text-gray-500 font-mono">
+                  <span>JID:</span>
+                  <span class="truncate max-w-[130px]" x-text="imp.grupo_raw"></span>
+                </div>
+                <p class="text-gray-600 italic bg-white p-1 rounded border border-gray-100 line-clamp-2" x-text="imp.caption"></p>
+              </div>
+            </template>
+          </div>
 
-                <div class="flex-1 space-y-2 text-xs min-w-0">
-                  
-                  <div class="bg-indigo-50/50 p-2 rounded-lg border border-indigo-100 space-y-1">
-                    <span class="text-[9px] text-indigo-700 font-extrabold uppercase tracking-wider block">✨ Extracción IA</span>
-                    <div class="grid grid-cols-2 gap-2">
-                      <div>
-                        <p class="text-[10px] text-gray-400 font-bold uppercase">Monto</p>
-                        <p class="font-bold text-emerald-700 text-sm" x-text="item.ia_monto ? ((item.ia_moneda || '') + ' ' + Number(item.ia_monto).toFixed(2)) : 'Sin lectura'"></p>
-                      </div>
-                      <div>
-                        <p class="text-[10px] text-gray-400 font-bold uppercase">Banco</p>
-                        <p class="font-semibold text-gray-800 truncate" x-text="item.ia_banco || 'No detectado'"></p>
-                      </div>
-                    </div>
-                    <div>
-                      <p class="text-[10px] text-gray-400 font-bold uppercase">Titular</p>
-                      <p class="font-semibold text-gray-900 truncate" x-text="item.ia_titular || 'No detectado'"></p>
-                    </div>
-                  </div>
+        </div>
+      </div>
 
-                  <div class="space-y-1 pt-0.5">
-                    <div class="flex justify-between text-[11px]">
-                      <span class="text-gray-500 font-medium">JID / Grupo:</span>
-                      <span class="font-mono text-gray-700 truncate max-w-[130px]" x-text="item.grupo_raw || 'Chat Directo'"></span>
-                    </div>
-                    <template x-if="item.caption">
-                      <div>
-                        <p class="text-[10px] text-gray-400 font-bold uppercase">Texto Original:</p>
-                        <p class="text-[10px] text-gray-600 italic bg-gray-50 p-1.5 rounded border border-gray-200 line-clamp-2" x-text="item.caption"></p>
-                      </div>
-                    </template>
-                  </div>
-
+    </div>
+  </template>
+</div>
                 </div>
               </div>
 
