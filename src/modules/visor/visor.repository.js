@@ -2,7 +2,7 @@ const { pool } = require('../../config/db');
 
 class VisorRepository {
   /**
-   * Obtiene y agrupa impactos_raw filtrando por la columna INSTANCIA
+   * Obtiene y agrupa impactos_raw filtrando por la columna INSTANCIA de forma flexible
    */
   async obtenerRawImagenes(instancia = 'JOHN') {
     try {
@@ -28,7 +28,9 @@ class VisorRepository {
         WHERE i.url_imagen IS NOT NULL AND TRIM(CAST(i.url_imagen AS text)) != ''
           AND (
             i.instancia IS NULL 
+            OR TRIM(CAST(i.instancia AS text)) = ''
             OR LOWER(CAST(i.instancia AS text)) LIKE LOWER($1)
+            OR LOWER(CAST(i.instancia AS text)) LIKE '%jhon%'
           )
         ORDER BY i.id DESC LIMIT 150
       `, [filtro]);
@@ -87,11 +89,10 @@ class VisorRepository {
   }
 
   /**
-   * Obtiene comprobantes_raw filtrando por INSTANCIA y manteniendo el JID/Grupo real
+   * Obtiene comprobantes_raw de la IA sin descartar registros por variaciones de instancia
    */
-  async obtenerLecturasIA(instancia = 'JOHN') {
+  async obtenerLecturasIA() {
     try {
-      const filtro = `%${instancia.trim()}%`;
       const { rows } = await pool.query(`
         SELECT 
           c.hash_largo,
@@ -104,7 +105,7 @@ class VisorRepository {
           COALESCE(c.estado_ia, 'PROCESADO') AS ia_estado,
           c.creado_en AS created_at,
           c.referencia,
-          c.instancia AS instancia,
+          c.instancia AS c_instancia,
           i.caption,
           i.grupo_raw,
           i.usuario_raw,
@@ -117,22 +118,19 @@ class VisorRepository {
         LEFT JOIN jz_directorio d ON (
           (i.grupo_raw IS NOT NULL AND d.id_grupo IS NOT NULL AND TRIM(CAST(i.grupo_raw AS text)) = TRIM(CAST(d.id_grupo AS text)))
           OR (i.usuario_raw IS NOT NULL AND d.id_grupo IS NOT NULL AND TRIM(CAST(i.usuario_raw AS text)) = TRIM(CAST(d.id_grupo AS text)))
-        )
-        WHERE (
-          c.instancia IS NULL 
-          OR LOWER(CAST(c.instancia AS text)) LIKE LOWER($1)
-          OR LOWER(CAST(i.instancia AS text)) LIKE LOWER($1)
+          OR (c.instancia IS NOT NULL AND d.id_grupo IS NOT NULL AND TRIM(CAST(c.instancia AS text)) = TRIM(CAST(d.id_grupo AS text)))
         )
         ORDER BY c.creado_en DESC LIMIT 100
-      `, [filtro]);
+      `);
 
       const map = new Map();
       for (const r of rows) {
-        if (!map.has(r.hash_largo)) {
-          map.set(r.hash_largo, {
+        const key = r.hash_largo || `ia_${r.created_at}_${Math.random()}`;
+        if (!map.has(key)) {
+          map.set(key, {
             ...r,
             nombre_push: r.directorio_nombre,
-            grupo_raw: r.grupo_raw || r.usuario_raw || 'Chat Directo', // Muestra el JID real o Chat Directo, NO la instancia
+            grupo_raw: (r.grupo_raw && r.grupo_raw.includes('@')) ? r.grupo_raw : (r.usuario_raw || 'Chat Directo'),
             caption: r.caption || r.referencia || 'Sin texto...'
           });
         }
