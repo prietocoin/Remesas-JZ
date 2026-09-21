@@ -845,12 +845,18 @@
           this.cambiarTabla('tasas_mercado');
         },
 
-        async cargarImagenesJohn() {
+       async cargarImagenesJohn() {
           try {
             const res = await this.fetchConTimeout('/api/raw-imagenes?instancia=JOHN');
             const data = await res.json();
-            if (data && data.success) {
-              this.datosImagenesJohn = data.rows || [];
+            if (Array.isArray(data)) {
+              this.datosImagenesJohn = data;
+            } else if (data && Array.isArray(data.rows)) {
+              this.datosImagenesJohn = data.rows;
+            } else if (data && Array.isArray(data.data)) {
+              this.datosImagenesJohn = data.data;
+            } else {
+              this.datosImagenesJohn = [];
             }
           } catch (e) {
             console.warn('Conexión lenta o fallida al cargar imágenes:', e.message);
