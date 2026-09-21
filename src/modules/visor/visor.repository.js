@@ -41,7 +41,7 @@ class VisorRepository {
         c.moneda AS ia_moneda, c.tasa AS ia_tasa, c.estado_proceso AS ia_estado
       FROM registros_raw r
       LEFT JOIN jz_directorio d ON (r.grupo_raw IS NOT NULL AND d.id_grupo IS NOT NULL AND TRIM(CAST(r.grupo_raw AS text)) = TRIM(CAST(d.id_grupo AS text)))
-      LEFT JOIN comprobantes_test c ON (r.hash_largo IS NOT NULL AND c.hash_largo IS NOT NULL AND TRIM(CAST(r.hash_largo AS text)) = TRIM(CAST(c.hash_largo AS text)))
+      LEFT JOIN comprobantes_raw c ON (r.hash_largo IS NOT NULL AND c.hash_largo IS NOT NULL AND TRIM(CAST(r.hash_largo AS text)) = TRIM(CAST(c.hash_largo AS text)))
       WHERE r.url_imagen IS NOT NULL AND TRIM(CAST(r.url_imagen AS text)) != ''
         AND (r.instancia IS NULL OR UPPER(CAST(r.instancia AS text)) LIKE $1)
       ORDER BY r.timestamp_msg DESC LIMIT 50
@@ -80,7 +80,7 @@ class VisorRepository {
 
   async obtenerTablaGenerica(tabla) {
     const tablasPermitidas = [
-      'registros', 'registros_raw', 'comprobantes_test', 'cola_recepcion', 
+      'registros', 'registros_raw', 'comprobantes_raw', 'comprobantes_test', 'cola_recepcion', 
       'vista_pares', 'jz_lotes', 'jz_mercado_tasas', 'jz_factores_matriz', 
       'jz_notificaciones', 't_nombres', 'jz_directorio'
     ];
