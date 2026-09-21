@@ -18,6 +18,10 @@ router.get('/tasas/factores', (req, res) => matrizController.getFactores(req, re
 router.post('/tasas/factores', (req, res) => matrizController.updateFactores(req, res));
 
 // Módulo Directorio
+router.get('/directorio', (req, res) => directorioController.getAll(req, res));
+router.post('/directorio', (req, res) => directorioController.guardar(req, res));
+router.put('/directorio/:id_grupo', (req, res) => directorioController.actualizar(req, res));
+router.delete('/directorio/:id_grupo', (req, res) => directorioController.eliminar(req, res));
 router.get('/directorio/grupo/:id_grupo', (req, res) => directorioController.getSocioByGrupo(req, res));
 
 // Módulo Visor & Auditoría (Instancia JOHN)
