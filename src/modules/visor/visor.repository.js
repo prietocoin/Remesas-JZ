@@ -1,7 +1,7 @@
 const { pool } = require('../../config/db');
 
 class VisorRepository {
-  async obtenerRawImagenes(instancia = 'JOHN') {
+  async obtenerRawImagenes() {
     try {
       const { rows } = await pool.query(`
         SELECT 
@@ -26,12 +26,11 @@ class VisorRepository {
         ORDER BY r.id DESC LIMIT 100
       `);
 
-      const agrupadosMap = new Map();
-
+      const map = new Map();
       for (const r of rows) {
         const key = r.hash_corto || r.hash_largo || `id_${r.id}`;
-        if (!agrupadosMap.has(key)) {
-          agrupadosMap.set(key, {
+        if (!map.has(key)) {
+          map.set(key, {
             id: r.id,
             hash_largo: r.hash_largo,
             hash_corto: key,
@@ -39,6 +38,10 @@ class VisorRepository {
             estado: r.estado,
             created_at: r.created_at,
             conteo: 1,
+            nombre_push: r.nombre_push,
+            usuario_raw: r.usuario_raw,
+            grupo_raw: r.grupo_raw,
+            caption: r.caption,
             impactos: [{
               nombre_push: r.nombre_push,
               usuario_raw: r.usuario_raw,
@@ -47,7 +50,7 @@ class VisorRepository {
             }]
           });
         } else {
-          const item = agrupadosMap.get(key);
+          const item = map.get(key);
           item.conteo += 1;
           if (r.estado === 'PROCESADO') item.estado = 'PROCESADO';
           
@@ -63,14 +66,14 @@ class VisorRepository {
         }
       }
 
-      return Array.from(agrupadosMap.values());
+      return Array.from(map.values());
     } catch (err) {
       console.error('Error en obtenerRawImagenes:', err.message);
       return [];
     }
   }
 
-  async obtenerLecturasIA(instancia = 'JOHN') {
+  async obtenerLecturasIA() {
     try {
       const { rows } = await pool.query(`
         SELECT 
