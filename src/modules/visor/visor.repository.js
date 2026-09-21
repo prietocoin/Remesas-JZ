@@ -1,7 +1,7 @@
 const { pool } = require('../../config/db');
 
 class VisorRepository {
-  async obtenerRawImagenes() {
+  async obtenerRawImagenes(instancia = 'JOHN') {
     try {
       const { rows } = await pool.query(`
         SELECT 
@@ -23,14 +23,17 @@ class VisorRepository {
           OR (r.usuario_raw IS NOT NULL AND d.id_grupo IS NOT NULL AND TRIM(CAST(r.usuario_raw AS text)) = TRIM(CAST(d.id_grupo AS text)))
         )
         WHERE r.url_imagen IS NOT NULL AND TRIM(CAST(r.url_imagen AS text)) != ''
+          AND (r.instancia IS NULL OR LOWER(CAST(r.instancia AS text)) LIKE '%jh%n%')
         ORDER BY r.id DESC LIMIT 100
       `);
 
-      const map = new Map();
+      // Agrupar varias lecturas del mismo Hash en 1 sola tarjeta
+      const agrupadosMap = new Map();
+
       for (const r of rows) {
         const key = r.hash_corto || r.hash_largo || `id_${r.id}`;
-        if (!map.has(key)) {
-          map.set(key, {
+        if (!agrupadosMap.has(key)) {
+          agrupadosMap.set(key, {
             id: r.id,
             hash_largo: r.hash_largo,
             hash_corto: key,
@@ -38,10 +41,6 @@ class VisorRepository {
             estado: r.estado,
             created_at: r.created_at,
             conteo: 1,
-            nombre_push: r.nombre_push,
-            usuario_raw: r.usuario_raw,
-            grupo_raw: r.grupo_raw,
-            caption: r.caption,
             impactos: [{
               nombre_push: r.nombre_push,
               usuario_raw: r.usuario_raw,
@@ -50,7 +49,7 @@ class VisorRepository {
             }]
           });
         } else {
-          const item = map.get(key);
+          const item = agrupadosMap.get(key);
           item.conteo += 1;
           if (r.estado === 'PROCESADO') item.estado = 'PROCESADO';
           
@@ -66,14 +65,14 @@ class VisorRepository {
         }
       }
 
-      return Array.from(map.values());
+      return Array.from(agrupadosMap.values());
     } catch (err) {
       console.error('Error en obtenerRawImagenes:', err.message);
       return [];
     }
   }
 
-  async obtenerLecturasIA() {
+  async obtenerLecturasIA(instancia = 'JOHN') {
     try {
       const { rows } = await pool.query(`
         SELECT 
@@ -89,7 +88,8 @@ class VisorRepository {
           c.banco AS ia_banco,
           c.titular AS ia_titular,
           c.moneda AS ia_moneda,
-          c.estado_ia AS ia_estado,
+          COALESCE(c.estado_ia, 'PROCESADO') AS ia_estado,
+          c.creado_en AS created_at,
           d.nombre AS directorio_nombre,
           d.roles AS directorio_rol,
           d.moneda_socio AS directorio_moneda,
@@ -100,6 +100,7 @@ class VisorRepository {
           (r.grupo_raw IS NOT NULL AND d.id_grupo IS NOT NULL AND TRIM(CAST(r.grupo_raw AS text)) = TRIM(CAST(d.id_grupo AS text)))
           OR (c.instancia IS NOT NULL AND d.id_grupo IS NOT NULL AND TRIM(CAST(c.instancia AS text)) = TRIM(CAST(d.id_grupo AS text)))
         )
+        WHERE (c.instancia IS NULL OR LOWER(CAST(c.instancia AS text)) LIKE '%jh%n%')
         ORDER BY c.creado_en DESC LIMIT 50
       `);
       return rows;
