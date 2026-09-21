@@ -441,13 +441,13 @@
         </div>
 
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <template x-for="item in datosLecturaIA" :key="item.id">
+          <template x-for="(item, idx) in datosLecturaIA" :key="item.hash_largo ? (item.hash_largo + '_' + idx) : idx">
             <div class="bg-white rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-all overflow-hidden flex flex-col justify-between">
               
               <div class="p-3 bg-gray-50 border-b border-gray-100 flex justify-between items-center text-xs">
                 <div class="flex items-center gap-2 min-w-0">
-                  <span class="font-mono text-[11px] bg-indigo-100 text-indigo-900 border border-indigo-200 px-2 py-0.5 rounded font-bold" x-text="'#' + item.hash_corto"></span>
-                  <span class="font-bold text-indigo-950 truncate" x-text="item.directorio_nombre ? '👥 ' + item.directorio_nombre : '📱 ' + item.nombre_push"></span>
+                  <span class="font-mono text-[11px] bg-indigo-100 text-indigo-900 border border-indigo-200 px-2 py-0.5 rounded font-bold" x-text="'#' + (item.hash_corto || 'Sin Hash')"></span>
+                  <span class="font-bold text-indigo-950 truncate" x-text="item.directorio_nombre ? '👥 ' + item.directorio_nombre : '📱 ' + (item.nombre_push || 'Desconocido')"></span>
                 </div>
                 <span class="px-2 py-0.5 text-[10px] font-bold rounded uppercase shrink-0" 
                       :class="item.ia_estado === 'PROCESADO' || item.ia_estado === 'A' ? 'bg-emerald-100 text-emerald-800 border border-emerald-300' : 'bg-amber-100 text-amber-800 border border-amber-300'" 
@@ -467,7 +467,7 @@
                     <div class="grid grid-cols-2 gap-2">
                       <div>
                         <p class="text-[10px] text-gray-400 font-bold uppercase">Monto</p>
-                        <p class="font-bold text-emerald-700 text-sm" x-text="item.ia_monto ? (item.ia_moneda + ' ' + Number(item.ia_monto).toFixed(2)) : 'Sin lectura'"></p>
+                        <p class="font-bold text-emerald-700 text-sm" x-text="item.ia_monto ? ((item.ia_moneda || '') + ' ' + Number(item.ia_monto).toFixed(2)) : 'Sin lectura'"></p>
                       </div>
                       <div>
                         <p class="text-[10px] text-gray-400 font-bold uppercase">Banco</p>
@@ -483,7 +483,7 @@
                   <div class="space-y-1 pt-0.5">
                     <div class="flex justify-between text-[11px]">
                       <span class="text-gray-500 font-medium">JID / Grupo:</span>
-                      <span class="font-mono text-gray-700 truncate max-w-[130px]" x-text="item.grupo_raw"></span>
+                      <span class="font-mono text-gray-700 truncate max-w-[130px]" x-text="item.grupo_raw || 'Chat Directo'"></span>
                     </div>
                     <template x-if="item.caption">
                       <div>
@@ -498,7 +498,7 @@
 
               <div class="px-3 py-1.5 bg-gray-50 border-t border-gray-100 flex justify-between items-center text-[10px] font-mono text-gray-400">
                 <span x-text="item.directorio_rol ? 'Rol: ' + item.directorio_rol : 'Sin vincular a directorio'"></span>
-                <span x-text="new Date(item.created_at).toLocaleString('es-ES')"></span>
+                <span x-text="item.created_at ? new Date(item.created_at).toLocaleString('es-ES') : '-'"></span
               </div>
 
             </div>
@@ -845,7 +845,7 @@
           this.cambiarTabla('tasas_mercado');
         },
 
-       async cargarImagenesJohn() {
+        async cargarImagenesJohn() {
           try {
             const res = await this.fetchConTimeout('/api/raw-imagenes?instancia=JOHN');
             const data = await res.json();
@@ -867,8 +867,14 @@
           try {
             const res = await this.fetchConTimeout('/api/lecturas-ia?instancia=JOHN');
             const data = await res.json();
-            if (data && data.success) {
-              this.datosLecturaIA = data.rows || [];
+            if (Array.isArray(data)) {
+              this.datosLecturaIA = data;
+            } else if (data && Array.isArray(data.rows)) {
+              this.datosLecturaIA = data.rows;
+            } else if (data && Array.isArray(data.data)) {
+              this.datosLecturaIA = data.data;
+            } else {
+              this.datosLecturaIA = [];
             }
           } catch (e) {
             console.warn('Error al cargar lecturas de IA:', e.message);
