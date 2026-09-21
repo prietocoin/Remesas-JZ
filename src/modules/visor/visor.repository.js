@@ -2,11 +2,13 @@ const { pool } = require('../../config/db');
 
 class VisorRepository {
   /**
-   * Obtiene y agrupa impactos_raw filtrando por la columna INSTANCIA de forma flexible
+   * Obtiene y agrupa impactos_raw filtrados por la instancia especificada (ej. JOHN / JHON)
    */
   async obtenerRawImagenes(instancia = 'JOHN') {
     try {
-      const filtro = `%${instancia.trim()}%`;
+      const filtro = `%${(instancia || 'JOHN').trim().toLowerCase()}%`;
+      const altFiltro = filtro.includes('john') ? '%jhon%' : '%john%';
+
       const { rows } = await pool.query(`
         SELECT 
           i.id,
@@ -27,13 +29,11 @@ class VisorRepository {
         )
         WHERE i.url_imagen IS NOT NULL AND TRIM(CAST(i.url_imagen AS text)) != ''
           AND (
-            i.instancia IS NULL 
-            OR TRIM(CAST(i.instancia AS text)) = ''
-            OR LOWER(CAST(i.instancia AS text)) LIKE LOWER($1)
-            OR LOWER(CAST(i.instancia AS text)) LIKE '%jhon%'
+            LOWER(CAST(i.instancia AS text)) LIKE LOWER($1)
+            OR LOWER(CAST(i.instancia AS text)) LIKE LOWER($2)
           )
-        ORDER BY i.id DESC LIMIT 150
-      `, [filtro]);
+        ORDER BY i.id DESC LIMIT 300
+      `, [filtro, altFiltro]);
 
       const map = new Map();
 
@@ -89,10 +89,13 @@ class VisorRepository {
   }
 
   /**
-   * Obtiene comprobantes_raw de la IA sin descartar registros por variaciones de instancia
+   * Obtiene comprobantes_raw filtrados ESTRICTAMENTE por la instancia especificada (JOHN / JHON)
    */
-  async obtenerLecturasIA() {
+  async obtenerLecturasIA(instancia = 'JOHN') {
     try {
+      const filtro = `%${(instancia || 'JOHN').trim().toLowerCase()}%`;
+      const altFiltro = filtro.includes('john') ? '%jhon%' : '%john%';
+
       const { rows } = await pool.query(`
         SELECT 
           c.hash_largo,
@@ -105,7 +108,7 @@ class VisorRepository {
           COALESCE(c.estado_ia, 'PROCESADO') AS ia_estado,
           c.creado_en AS created_at,
           c.referencia,
-          c.instancia AS c_instancia,
+          COALESCE(c.instancia, i.instancia) AS instancia,
           i.caption,
           i.grupo_raw,
           i.usuario_raw,
@@ -118,10 +121,15 @@ class VisorRepository {
         LEFT JOIN jz_directorio d ON (
           (i.grupo_raw IS NOT NULL AND d.id_grupo IS NOT NULL AND TRIM(CAST(i.grupo_raw AS text)) = TRIM(CAST(d.id_grupo AS text)))
           OR (i.usuario_raw IS NOT NULL AND d.id_grupo IS NOT NULL AND TRIM(CAST(i.usuario_raw AS text)) = TRIM(CAST(d.id_grupo AS text)))
-          OR (c.instancia IS NOT NULL AND d.id_grupo IS NOT NULL AND TRIM(CAST(c.instancia AS text)) = TRIM(CAST(d.id_grupo AS text)))
         )
-        ORDER BY c.creado_en DESC LIMIT 100
-      `);
+        WHERE (
+          LOWER(CAST(c.instancia AS text)) LIKE LOWER($1)
+          OR LOWER(CAST(c.instancia AS text)) LIKE LOWER($2)
+          OR LOWER(CAST(i.instancia AS text)) LIKE LOWER($1)
+          OR LOWER(CAST(i.instancia AS text)) LIKE LOWER($2)
+        )
+        ORDER BY c.creado_en DESC LIMIT 300
+      `, [filtro, altFiltro]);
 
       const map = new Map();
       for (const r of rows) {
