@@ -4,9 +4,7 @@
   "description": "Microservicio modular de tasas y visor para la instancia JOHN",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js",
-    "worker": "node worker.js",
-    "start:all": "node server.js & node worker.js"
+    "start": "node server.js"
   },
   "dependencies": {
     "bullmq": "^5.1.0",
