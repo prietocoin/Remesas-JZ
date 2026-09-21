@@ -31,23 +31,28 @@ class VisorRepository {
 
   async obtenerLecturasIA(instancia = 'JOHN') {
     const filtro = `%${instancia.toUpperCase().trim()}%`;
-    const { rows } = await pool.query(`
-      SELECT 
-        r.hash_largo, r.hash_corto, r.url_imagen, r.nombre_push, r.usuario_raw, 
-        r.grupo_raw, r.caption, r.timestamp_msg, r.estado AS estado_raw,
-        d.nombre AS directorio_nombre, d.roles AS directorio_rol,
-        d.moneda_socio AS directorio_moneda, d.porcentaje_comision AS directorio_comision,
-        c.monto AS ia_monto, c.banco AS ia_banco, c.titular AS ia_titular,
-        c.moneda AS ia_moneda, c.tasa AS ia_tasa, c.estado_proceso AS ia_estado
-      FROM registros_raw r
-      LEFT JOIN jz_directorio d ON (r.grupo_raw IS NOT NULL AND d.id_grupo IS NOT NULL AND TRIM(CAST(r.grupo_raw AS text)) = TRIM(CAST(d.id_grupo AS text)))
-      LEFT JOIN comprobantes_raw c ON (r.hash_largo IS NOT NULL AND c.hash_largo IS NOT NULL AND TRIM(CAST(r.hash_largo AS text)) = TRIM(CAST(c.hash_largo AS text)))
-      WHERE r.url_imagen IS NOT NULL AND TRIM(CAST(r.url_imagen AS text)) != ''
-        AND (r.instancia IS NULL OR UPPER(CAST(r.instancia AS text)) LIKE $1)
-      ORDER BY r.timestamp_msg DESC LIMIT 50
-    `, [filtro]);
+    try {
+      const { rows } = await pool.query(`
+        SELECT 
+          r.hash_largo, r.hash_corto, r.url_imagen, r.nombre_push, r.usuario_raw, 
+          r.grupo_raw, r.caption, r.timestamp_msg, r.estado AS estado_raw,
+          d.nombre AS directorio_nombre, d.roles AS directorio_rol,
+          d.moneda_socio AS directorio_moneda, d.porcentaje_comision AS directorio_comision,
+          c.monto AS ia_monto, c.banco AS ia_banco, c.titular AS ia_titular,
+          c.moneda AS ia_moneda, c.tasa AS ia_tasa, c.estado_ia AS ia_estado
+        FROM registros_raw r
+        LEFT JOIN jz_directorio d ON (r.grupo_raw IS NOT NULL AND d.id_grupo IS NOT NULL AND TRIM(CAST(r.grupo_raw AS text)) = TRIM(CAST(d.id_grupo AS text)))
+        LEFT JOIN comprobantes_raw c ON (r.hash_largo IS NOT NULL AND c.hash_largo IS NOT NULL AND TRIM(CAST(r.hash_largo AS text)) = TRIM(CAST(c.hash_largo AS text)))
+        WHERE r.url_imagen IS NOT NULL AND TRIM(CAST(r.url_imagen AS text)) != ''
+          AND (r.instancia IS NULL OR UPPER(CAST(r.instancia AS text)) LIKE $1)
+        ORDER BY r.timestamp_msg DESC LIMIT 50
+      `, [filtro]);
 
-    return rows;
+      return rows;
+    } catch (err) {
+      console.error('Error SQL en obtenerLecturasIA:', err.message);
+      return [];
+    }
   }
 
   async obtenerAsesores() {
