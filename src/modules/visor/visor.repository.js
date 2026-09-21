@@ -1,22 +1,18 @@
 const { pool } = require('../../config/db');
 
 class VisorRepository {
-  /**
-   * 1. Consulta DIRECTA a impactos_raw (sin JOINs ni filtros WHERE)
-   */
   async obtenerRawImagenes() {
     try {
       const { rows } = await pool.query(`
         SELECT id, hash_largo, hash_corto, grupo_raw, usuario_raw, nombre_push, caption, url_imagen, estado, created_at
         FROM impactos_raw
+        WHERE url_imagen IS NOT NULL AND TRIM(CAST(url_imagen AS text)) != ''
         ORDER BY id DESC LIMIT 100
       `);
 
       const map = new Map();
 
       for (const r of rows) {
-        if (!r.url_imagen) continue;
-        
         const key = r.hash_largo || r.hash_corto || `id_${r.id}`;
         const hashCorto = r.hash_corto || (r.hash_largo ? r.hash_largo.substring(0, 8) : `#${r.id}`);
 
@@ -29,10 +25,6 @@ class VisorRepository {
             estado: r.estado || 'RECIBIDO',
             created_at: r.created_at,
             conteo: 1,
-            nombre_push: r.nombre_push || r.usuario_raw || 'Desconocido',
-            usuario_raw: r.usuario_raw,
-            grupo_raw: r.grupo_raw,
-            caption: r.caption,
             impactos: [{
               id: r.id,
               nombre_push: r.nombre_push || r.usuario_raw || 'Desconocido',
@@ -64,9 +56,6 @@ class VisorRepository {
     }
   }
 
-  /**
-   * 2. Consulta DIRECTA a comprobantes_raw (sin JOINs ni filtros WHERE)
-   */
   async obtenerLecturasIA() {
     try {
       const { rows } = await pool.query(`
