@@ -3,7 +3,8 @@ const visorService = require('./visor.service');
 class VisorController {
   async obtenerRawImagenes(req, res) {
     try {
-      const rows = await visorService.obtenerRawImagenes();
+      const instancia = req.query.instancia || 'JOHN';
+      const rows = await visorService.obtenerRawImagenes(instancia);
       return res.json({ success: true, rows });
     } catch (err) {
       console.error('Error en controller obtenerRawImagenes:', err);
@@ -13,7 +14,8 @@ class VisorController {
 
   async obtenerLecturasIA(req, res) {
     try {
-      const rows = await visorService.obtenerLecturasIA();
+      const instancia = req.query.instancia || 'JOHN';
+      const rows = await visorService.obtenerLecturasIA(instancia);
       return res.json({ success: true, rows });
     } catch (err) {
       console.error('Error en controller obtenerLecturasIA:', err);
@@ -21,7 +23,6 @@ class VisorController {
     }
   }
 
-  // Aliases compatibles con las rutas de api.router.js
   getRawImagenes(req, res) {
     return this.obtenerRawImagenes(req, res);
   }
@@ -78,7 +79,6 @@ class VisorController {
 
 const controller = new VisorController();
 
-// Binding explicito para evitar pérdida de contexto en los callbacks de Express
 controller.obtenerRawImagenes = controller.obtenerRawImagenes.bind(controller);
 controller.obtenerLecturasIA = controller.obtenerLecturasIA.bind(controller);
 controller.getRawImagenes = controller.getRawImagenes.bind(controller);
