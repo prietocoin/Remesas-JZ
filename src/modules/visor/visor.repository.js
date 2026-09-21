@@ -4,8 +4,9 @@ class VisorRepository {
   async obtenerRawImagenes(instancia = 'JOHN') {
     const filtro = `%${instancia.toUpperCase().trim()}%`;
     try {
-      const rawRes = await pool.query(`
+      const { rows } = await pool.query(`
         SELECT 
+          r.id,
           r.hash_largo, 
           COALESCE(r.hash_corto, SUBSTRING(r.hash_largo FROM 1 FOR 8), 'Sin Hash') AS hash_corto, 
           r.grupo_raw, 
@@ -13,12 +14,12 @@ class VisorRepository {
           COALESCE(d.nombre, r.nombre_push, r.usuario_raw, 'Desconocido') AS nombre_push, 
           r.caption, 
           r.url_imagen, 
-          COALESCE(r.conteo, 1) AS conteo, 
+          1 AS conteo, 
           COALESCE(r.estado, 'RECIBIDO') AS estado, 
           r.instancia, 
-          r.timestamp_msg,
-          d.nombre AS directorio_nombre
-        FROM registros_raw r
+          COALESCE(r.timestamp_msg, EXTRACT(EPOCH FROM COALESCE(r.created_at, NOW())) * 1000) AS timestamp_msg,
+          r.created_at
+        FROM impactos_raw r
         LEFT JOIN jz_directorio d ON (
           (r.grupo_raw IS NOT NULL AND d.id_grupo IS NOT NULL AND TRIM(CAST(r.grupo_raw AS text)) = TRIM(CAST(d.id_grupo AS text)))
           OR (r.usuario_raw IS NOT NULL AND d.id_grupo IS NOT NULL AND TRIM(CAST(r.usuario_raw AS text)) = TRIM(CAST(d.id_grupo AS text)))
@@ -32,23 +33,9 @@ class VisorRepository {
         ORDER BY r.id DESC LIMIT 60
       `, [filtro]);
 
-      let rows = rawRes.rows || [];
-
-      if (rows.length === 0) {
-        const fallback = await pool.query(`
-          SELECT id, hash_corto, nombre_asesor AS nombre_push, titular AS usuario_raw, 
-                 banco AS grupo_raw, monto::text AS caption, hiperlink AS url_imagen, 
-                 estado_proceso AS estado, created_at 
-          FROM registros 
-          WHERE hiperlink IS NOT NULL AND TRIM(CAST(hiperlink AS text)) != '' 
-          ORDER BY id DESC LIMIT 60
-        `).catch(() => ({ rows: [] }));
-        rows = fallback.rows || [];
-      }
-
       return rows;
     } catch (err) {
-      console.error('Error en obtenerRawImagenes:', err.message);
+      console.error('Error en obtenerRawImagenes (impactos_raw):', err.message);
       return [];
     }
   }
@@ -76,7 +63,7 @@ class VisorRepository {
           d.moneda_socio AS directorio_moneda,
           d.porcentaje_comision AS directorio_comision
         FROM comprobantes_raw c
-        LEFT JOIN registros_raw r ON TRIM(CAST(c.hash_largo AS text)) = TRIM(CAST(r.hash_largo AS text))
+        LEFT JOIN impactos_raw r ON TRIM(CAST(c.hash_largo AS text)) = TRIM(CAST(r.hash_largo AS text))
         LEFT JOIN jz_directorio d ON (
           (r.grupo_raw IS NOT NULL AND d.id_grupo IS NOT NULL AND TRIM(CAST(r.grupo_raw AS text)) = TRIM(CAST(d.id_grupo AS text)))
           OR (c.instancia IS NOT NULL AND d.id_grupo IS NOT NULL AND TRIM(CAST(c.instancia AS text)) = TRIM(CAST(d.id_grupo AS text)))
@@ -121,7 +108,7 @@ class VisorRepository {
 
   async obtenerTablaGenerica(tabla) {
     const tablasPermitidas = [
-      'registros', 'registros_raw', 'comprobantes_raw', 'comprobantes_test', 'cola_recepcion', 
+      'registros', 'registros_raw', 'impactos_raw', 'comprobantes_raw', 'comprobantes_test', 'cola_recepcion', 
       'vista_pares', 'jz_lotes', 'jz_mercado_tasas', 'jz_factores_matriz', 
       'jz_notificaciones', 't_nombres', 'jz_directorio'
     ];
