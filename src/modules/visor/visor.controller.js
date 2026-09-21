@@ -21,6 +21,15 @@ class VisorController {
     }
   }
 
+  // Aliases compatibles con las rutas de api.router.js
+  getRawImagenes(req, res) {
+    return this.obtenerRawImagenes(req, res);
+  }
+
+  getLecturasIA(req, res) {
+    return this.obtenerLecturasIA(req, res);
+  }
+
   async obtenerAsesores(req, res) {
     try {
       const rows = await visorService.obtenerAsesores();
@@ -67,4 +76,12 @@ class VisorController {
   }
 }
 
-module.exports = new VisorController();
+const controller = new VisorController();
+
+// Binding explicito para evitar pérdida de contexto en los callbacks de Express
+controller.obtenerRawImagenes = controller.obtenerRawImagenes.bind(controller);
+controller.obtenerLecturasIA = controller.obtenerLecturasIA.bind(controller);
+controller.getRawImagenes = controller.getRawImagenes.bind(controller);
+controller.getLecturasIA = controller.getLecturasIA.bind(controller);
+
+module.exports = controller;
