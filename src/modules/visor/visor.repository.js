@@ -3,33 +3,57 @@ const { pool } = require('../../config/db');
 class VisorRepository {
   async obtenerRawImagenes(instancia = 'JOHN') {
     const filtro = `%${instancia.toUpperCase().trim()}%`;
-    const rawRes = await pool.query(`
-      SELECT hash_largo, hash_corto, grupo_raw, usuario_raw, nombre_push, caption, 
-             url_imagen, COALESCE(conteo, 1) AS conteo, estado, instancia, timestamp_msg
-      FROM registros_raw 
-      WHERE url_imagen IS NOT NULL AND TRIM(CAST(url_imagen AS text)) != ''
-        AND (instancia IS NULL OR UPPER(CAST(instancia AS text)) LIKE $1)
-      ORDER BY timestamp_msg DESC LIMIT 60
-    `, [filtro]).catch(() => ({ rows: [] }));
+    try {
+      const rawRes = await pool.query(`
+        SELECT 
+          r.hash_largo, 
+          COALESCE(r.hash_corto, SUBSTRING(r.hash_largo FROM 1 FOR 8), 'Sin Hash') AS hash_corto, 
+          r.grupo_raw, 
+          r.usuario_raw, 
+          COALESCE(d.nombre, r.nombre_push, r.usuario_raw, 'Desconocido') AS nombre_push, 
+          r.caption, 
+          r.url_imagen, 
+          COALESCE(r.conteo, 1) AS conteo, 
+          COALESCE(r.estado, 'RECIBIDO') AS estado, 
+          r.instancia, 
+          r.timestamp_msg,
+          d.nombre AS directorio_nombre
+        FROM registros_raw r
+        LEFT JOIN jz_directorio d ON (
+          (r.grupo_raw IS NOT NULL AND d.id_grupo IS NOT NULL AND TRIM(CAST(r.grupo_raw AS text)) = TRIM(CAST(d.id_grupo AS text)))
+          OR (r.usuario_raw IS NOT NULL AND d.id_grupo IS NOT NULL AND TRIM(CAST(r.usuario_raw AS text)) = TRIM(CAST(d.id_grupo AS text)))
+        )
+        WHERE r.url_imagen IS NOT NULL AND TRIM(CAST(r.url_imagen AS text)) != ''
+          AND (
+            r.instancia IS NULL 
+            OR UPPER(CAST(r.instancia AS text)) LIKE $1
+            OR d.id_grupo IS NOT NULL
+          )
+        ORDER BY r.id DESC LIMIT 60
+      `, [filtro]);
 
-    let rows = rawRes.rows || [];
+      let rows = rawRes.rows || [];
 
-    if (rows.length === 0) {
-      const fallback = await pool.query(`
-        SELECT id, hash_corto, nombre_asesor AS nombre_push, titular AS usuario_raw, 
-               banco AS grupo_raw, monto::text AS caption, hiperlink AS url_imagen, 
-               estado_proceso AS estado, created_at 
-        FROM registros 
-        WHERE hiperlink IS NOT NULL AND TRIM(CAST(hiperlink AS text)) != '' 
-        ORDER BY id DESC LIMIT 60
-      `).catch(() => ({ rows: [] }));
-      rows = fallback.rows || [];
+      if (rows.length === 0) {
+        const fallback = await pool.query(`
+          SELECT id, hash_corto, nombre_asesor AS nombre_push, titular AS usuario_raw, 
+                 banco AS grupo_raw, monto::text AS caption, hiperlink AS url_imagen, 
+                 estado_proceso AS estado, created_at 
+          FROM registros 
+          WHERE hiperlink IS NOT NULL AND TRIM(CAST(hiperlink AS text)) != '' 
+          ORDER BY id DESC LIMIT 60
+        `).catch(() => ({ rows: [] }));
+        rows = fallback.rows || [];
+      }
+
+      return rows;
+    } catch (err) {
+      console.error('Error en obtenerRawImagenes:', err.message);
+      return [];
     }
-
-    return rows;
   }
 
- async obtenerLecturasIA(instancia = 'JOHN') {
+  async obtenerLecturasIA(instancia = 'JOHN') {
     const filtro = `%${instancia.toUpperCase().trim()}%`;
     try {
       const { rows } = await pool.query(`
@@ -53,8 +77,11 @@ class VisorRepository {
           d.porcentaje_comision AS directorio_comision
         FROM comprobantes_raw c
         LEFT JOIN registros_raw r ON TRIM(CAST(c.hash_largo AS text)) = TRIM(CAST(r.hash_largo AS text))
-        LEFT JOIN jz_directorio d ON (r.grupo_raw IS NOT NULL AND d.id_grupo IS NOT NULL AND TRIM(CAST(r.grupo_raw AS text)) = TRIM(CAST(d.id_grupo AS text)))
-        WHERE (c.instancia IS NULL OR UPPER(CAST(c.instancia AS text)) LIKE $1)
+        LEFT JOIN jz_directorio d ON (
+          (r.grupo_raw IS NOT NULL AND d.id_grupo IS NOT NULL AND TRIM(CAST(r.grupo_raw AS text)) = TRIM(CAST(d.id_grupo AS text)))
+          OR (c.instancia IS NOT NULL AND d.id_grupo IS NOT NULL AND TRIM(CAST(c.instancia AS text)) = TRIM(CAST(d.id_grupo AS text)))
+        )
+        WHERE (c.instancia IS NULL OR UPPER(CAST(c.instancia AS text)) LIKE $1 OR d.id_grupo IS NOT NULL)
         ORDER BY c.creado_en DESC LIMIT 50
       `, [filtro]);
       return rows;
@@ -63,6 +90,7 @@ class VisorRepository {
       return [];
     }
   }
+
   async obtenerAsesores() {
     const { rows } = await pool.query("SELECT DISTINCT nombre_asesor FROM registros WHERE nombre_asesor IS NOT NULL AND nombre_asesor != '' ORDER BY nombre_asesor");
     return rows;
