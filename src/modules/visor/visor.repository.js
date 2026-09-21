@@ -8,7 +8,7 @@ class VisorRepository {
              url_imagen, COALESCE(conteo, 1) AS conteo, estado, instancia, timestamp_msg
       FROM registros_raw 
       WHERE url_imagen IS NOT NULL AND TRIM(CAST(url_imagen AS text)) != ''
-        AND UPPER(COALESCE(instancia, 'JOHN')) LIKE $1
+        AND (instancia IS NULL OR UPPER(CAST(instancia AS text)) LIKE $1)
       ORDER BY timestamp_msg DESC LIMIT 60
     `, [filtro]).catch(() => ({ rows: [] }));
 
@@ -30,27 +30,110 @@ class VisorRepository {
   }
 
   async obtenerLecturasIA(instancia = 'JOHN') {
-    const filtro = `%${instancia.toUpperCase().trim()}%`;
     try {
-      const { rows } = await pool.query(`
+      // 1. Cruce principal: registros_raw + comprobantes_raw + jz_directorio
+      let res = await pool.query(`
         SELECT 
-          r.hash_largo, r.hash_corto, r.url_imagen, r.nombre_push, r.usuario_raw, 
-          r.grupo_raw, r.caption, r.timestamp_msg, r.estado AS estado_raw,
-          d.nombre AS directorio_nombre, d.roles AS directorio_rol,
-          d.moneda_socio AS directorio_moneda, d.porcentaje_comision AS directorio_comision,
-          c.monto AS ia_monto, c.banco AS ia_banco, c.titular AS ia_titular,
-          c.moneda AS ia_moneda, c.tasa AS ia_tasa, c.estado_ia AS ia_estado
+          r.hash_largo, 
+          COALESCE(r.hash_corto, SUBSTRING(r.hash_largo FROM 1 FOR 8), 'Sin Hash') AS hash_corto, 
+          r.url_imagen, 
+          COALESCE(r.nombre_push, r.usuario_raw, 'Desconocido') AS nombre_push, 
+          r.usuario_raw, 
+          r.grupo_raw, 
+          r.caption, 
+          COALESCE(r.timestamp_msg, EXTRACT(EPOCH FROM NOW())*1000) AS timestamp_msg, 
+          r.estado AS estado_raw,
+          d.nombre AS directorio_nombre, 
+          d.roles AS directorio_rol,
+          d.moneda_socio AS directorio_moneda, 
+          d.porcentaje_comision AS directorio_comision,
+          c.monto AS ia_monto, 
+          c.banco AS ia_banco, 
+          c.titular AS ia_titular,
+          c.moneda AS ia_moneda, 
+          c.tasa AS ia_tasa, 
+          COALESCE(c.estado_ia, c.estado_proceso, c.estado, r.estado, 'PROCESADO') AS ia_estado
         FROM registros_raw r
-        LEFT JOIN jz_directorio d ON (r.grupo_raw IS NOT NULL AND d.id_grupo IS NOT NULL AND TRIM(CAST(r.grupo_raw AS text)) = TRIM(CAST(d.id_grupo AS text)))
-        LEFT JOIN comprobantes_raw c ON (r.hash_largo IS NOT NULL AND c.hash_largo IS NOT NULL AND TRIM(CAST(r.hash_largo AS text)) = TRIM(CAST(c.hash_largo AS text)))
+        LEFT JOIN jz_directorio d ON (
+          (r.grupo_raw IS NOT NULL AND d.id_grupo IS NOT NULL AND TRIM(CAST(r.grupo_raw AS text)) = TRIM(CAST(d.id_grupo AS text)))
+          OR (r.usuario_raw IS NOT NULL AND d.id_grupo IS NOT NULL AND TRIM(CAST(r.usuario_raw AS text)) = TRIM(CAST(d.id_grupo AS text)))
+        )
+        LEFT JOIN comprobantes_raw c ON (
+          (r.hash_largo IS NOT NULL AND c.hash_largo IS NOT NULL AND TRIM(CAST(r.hash_largo AS text)) = TRIM(CAST(c.hash_largo AS text)))
+          OR (r.hash_corto IS NOT NULL AND c.hash_corto IS NOT NULL AND TRIM(CAST(r.hash_corto AS text)) = TRIM(CAST(c.hash_corto AS text)))
+        )
         WHERE r.url_imagen IS NOT NULL AND TRIM(CAST(r.url_imagen AS text)) != ''
-          AND (r.instancia IS NULL OR UPPER(CAST(r.instancia AS text)) LIKE $1)
-        ORDER BY r.timestamp_msg DESC LIMIT 50
-      `, [filtro]);
+        ORDER BY r.id DESC LIMIT 50
+      `).catch(() => ({ rows: [] }));
+
+      let rows = res.rows || [];
+
+      // 2. Segundo intento: comprobantes_raw directo + jz_directorio
+      if (rows.length === 0) {
+        res = await pool.query(`
+          SELECT 
+            c.hash_largo,
+            COALESCE(c.hash_corto, SUBSTRING(c.hash_largo FROM 1 FOR 8), 'Sin Hash') AS hash_corto,
+            c.url_imagen,
+            COALESCE(c.nombre_push, c.titular, 'Desconocido') AS nombre_push,
+            c.usuario_raw,
+            c.grupo_raw,
+            c.caption,
+            EXTRACT(EPOCH FROM COALESCE(c.created_at, NOW()))*1000 AS timestamp_msg,
+            COALESCE(c.estado_ia, 'PROCESADO') AS estado_raw,
+            d.nombre AS directorio_nombre,
+            d.roles AS directorio_rol,
+            d.moneda_socio AS directorio_moneda,
+            d.porcentaje_comision AS directorio_comision,
+            c.monto AS ia_monto,
+            c.banco AS ia_banco,
+            c.titular AS ia_titular,
+            c.moneda AS ia_moneda,
+            c.tasa AS ia_tasa,
+            COALESCE(c.estado_ia, c.estado_proceso, c.estado, 'PROCESADO') AS ia_estado
+          FROM comprobantes_raw c
+          LEFT JOIN jz_directorio d ON (
+            (c.grupo_raw IS NOT NULL AND d.id_grupo IS NOT NULL AND TRIM(CAST(c.grupo_raw AS text)) = TRIM(CAST(d.id_grupo AS text)))
+            OR (c.usuario_raw IS NOT NULL AND d.id_grupo IS NOT NULL AND TRIM(CAST(c.usuario_raw AS text)) = TRIM(CAST(d.id_grupo AS text)))
+          )
+          ORDER BY c.id DESC LIMIT 50
+        `).catch(() => ({ rows: [] }));
+        rows = res.rows || [];
+      }
+
+      // 3. Tercer intento: Tabla histórica registros
+      if (rows.length === 0) {
+        res = await pool.query(`
+          SELECT 
+            r.hash_corto AS hash_largo,
+            r.hash_corto,
+            r.hiperlink AS url_imagen,
+            r.nombre_asesor AS nombre_push,
+            r.titular AS usuario_raw,
+            r.banco AS grupo_raw,
+            r.monto::text AS caption,
+            EXTRACT(EPOCH FROM COALESCE(r.created_at, NOW()))*1000 AS timestamp_msg,
+            r.estado_proceso AS estado_raw,
+            d.nombre AS directorio_nombre,
+            d.roles AS directorio_rol,
+            d.moneda_socio AS directorio_moneda,
+            d.porcentaje_comision AS directorio_comision,
+            r.monto AS ia_monto,
+            r.banco AS ia_banco,
+            r.titular AS ia_titular,
+            r.moneda AS ia_moneda,
+            r.tasa AS ia_tasa,
+            r.estado_proceso AS ia_estado
+          FROM registros r
+          LEFT JOIN jz_directorio d ON (r.nombre_asesor IS NOT NULL AND d.nombre IS NOT NULL AND TRIM(r.nombre_asesor) = TRIM(d.nombre))
+          ORDER BY r.id DESC LIMIT 50
+        `).catch(() => ({ rows: [] }));
+        rows = res.rows || [];
+      }
 
       return rows;
     } catch (err) {
-      console.error('Error SQL en obtenerLecturasIA:', err.message);
+      console.error('Error en obtenerLecturasIA:', err.message);
       return [];
     }
   }
