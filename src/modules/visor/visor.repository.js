@@ -2,49 +2,55 @@ const { pool } = require('../../config/db');
 
 class VisorRepository {
   /**
-   * Obtiene y agrupa imágenes de impactos_raw filtrando por instancia
+   * Obtiene y agrupa impactos_raw filtrando por la columna INSTANCIA
    */
   async obtenerRawImagenes(instancia = 'JOHN') {
     try {
-      const term = (instancia || 'JOHN').trim().toLowerCase();
-      const pattern = `%${term}%`;
-      const altPattern = term.includes('john') ? '%jhon%' : '%john%';
-
+      const filtro = `%${instancia.trim()}%`;
       const { rows } = await pool.query(`
-        SELECT id, hash_largo, hash_corto, grupo_raw, usuario_raw, nombre_push, caption, url_imagen, estado, created_at, instancia
-        FROM impactos_raw
-        WHERE url_imagen IS NOT NULL AND TRIM(CAST(url_imagen AS text)) != ''
+        SELECT 
+          i.id,
+          i.hash_largo, 
+          COALESCE(i.hash_corto, SUBSTRING(i.hash_largo FROM 1 FOR 8), 'Sin Hash') AS hash_corto, 
+          i.grupo_raw, 
+          i.usuario_raw, 
+          COALESCE(d.nombre, i.nombre_push, i.usuario_raw, 'Desconocido') AS nombre_push, 
+          i.caption, 
+          i.url_imagen, 
+          COALESCE(i.estado, 'RECIBIDO') AS estado, 
+          i.instancia, 
+          i.created_at
+        FROM impactos_raw i
+        LEFT JOIN jz_directorio d ON (
+          (i.grupo_raw IS NOT NULL AND d.id_grupo IS NOT NULL AND TRIM(CAST(i.grupo_raw AS text)) = TRIM(CAST(d.id_grupo AS text)))
+          OR (i.usuario_raw IS NOT NULL AND d.id_grupo IS NOT NULL AND TRIM(CAST(i.usuario_raw AS text)) = TRIM(CAST(d.id_grupo AS text)))
+        )
+        WHERE i.url_imagen IS NOT NULL AND TRIM(CAST(i.url_imagen AS text)) != ''
           AND (
-            instancia IS NULL 
-            OR TRIM(CAST(instancia AS text)) = ''
-            OR LOWER(CAST(instancia AS text)) LIKE $1
-            OR LOWER(CAST(instancia AS text)) LIKE $2
+            i.instancia IS NULL 
+            OR LOWER(CAST(i.instancia AS text)) LIKE LOWER($1)
           )
-        ORDER BY id DESC LIMIT 100
-      `, [pattern, altPattern]);
+        ORDER BY i.id DESC LIMIT 150
+      `, [filtro]);
 
       const map = new Map();
 
       for (const r of rows) {
         const key = r.hash_largo || r.hash_corto || `id_${r.id}`;
-        const hashCorto = r.hash_corto || (r.hash_largo ? r.hash_largo.substring(0, 8) : `#${r.id}`);
-
+        
         if (!map.has(key)) {
           map.set(key, {
             id: r.id,
             hash_largo: r.hash_largo,
-            hash_corto: hashCorto,
+            hash_corto: r.hash_corto || (r.hash_largo ? r.hash_largo.substring(0, 8) : `#${r.id}`),
             url_imagen: r.url_imagen,
             estado: r.estado || 'RECIBIDO',
             created_at: r.created_at,
+            instancia: r.instancia,
             conteo: 1,
-            nombre_push: r.nombre_push || r.usuario_raw || 'Desconocido',
-            usuario_raw: r.usuario_raw,
-            grupo_raw: r.grupo_raw,
-            caption: r.caption,
             impactos: [{
               id: r.id,
-              nombre_push: r.nombre_push || r.usuario_raw || 'Desconocido',
+              nombre_push: r.nombre_push,
               usuario_raw: r.usuario_raw,
               grupo_raw: r.grupo_raw,
               caption: r.caption
@@ -56,13 +62,20 @@ class VisorRepository {
           if (r.estado === 'PROCESADO' || r.estado === 'LISTO_PARA_IA') {
             item.estado = r.estado;
           }
-          item.impactos.push({
-            id: r.id,
-            nombre_push: r.nombre_push || r.usuario_raw || 'Desconocido',
-            usuario_raw: r.usuario_raw,
-            grupo_raw: r.grupo_raw,
-            caption: r.caption
-          });
+
+          const yaExiste = item.impactos.some(
+            imp => imp.grupo_raw === r.grupo_raw && imp.usuario_raw === r.usuario_raw
+          );
+
+          if (!yaExiste) {
+            item.impactos.push({
+              id: r.id,
+              nombre_push: r.nombre_push,
+              usuario_raw: r.usuario_raw,
+              grupo_raw: r.grupo_raw,
+              caption: r.caption
+            });
+          }
         }
       }
 
@@ -74,47 +87,60 @@ class VisorRepository {
   }
 
   /**
-   * Obtiene comprobantes_raw filtrando por instancia
+   * Obtiene comprobantes_raw filtrando por INSTANCIA y manteniendo el JID/Grupo real
    */
   async obtenerLecturasIA(instancia = 'JOHN') {
     try {
-      const term = (instancia || 'JOHN').trim().toLowerCase();
-      const pattern = `%${term}%`;
-      const altPattern = term.includes('john') ? '%jhon%' : '%john%';
-
+      const filtro = `%${instancia.trim()}%`;
       const { rows } = await pool.query(`
         SELECT 
-          hash_largo,
-          monto AS ia_monto,
-          moneda AS ia_moneda,
-          banco AS ia_banco,
-          referencia,
-          titular AS ia_titular,
-          creado_en AS created_at,
-          url_r2 AS url_imagen,
-          estado_ia AS ia_estado,
-          instancia
-        FROM comprobantes_raw
-        WHERE (
-          instancia IS NULL 
-          OR TRIM(CAST(instancia AS text)) = ''
-          OR LOWER(CAST(instancia AS text)) LIKE $1
-          OR LOWER(CAST(instancia AS text)) LIKE $2
+          c.hash_largo,
+          SUBSTRING(c.hash_largo FROM 1 FOR 8) AS hash_corto,
+          COALESCE(c.url_r2, i.url_imagen) AS url_imagen,
+          c.monto AS ia_monto,
+          c.banco AS ia_banco,
+          c.titular AS ia_titular,
+          c.moneda AS ia_moneda,
+          COALESCE(c.estado_ia, 'PROCESADO') AS ia_estado,
+          c.creado_en AS created_at,
+          c.referencia,
+          c.instancia AS instancia,
+          i.caption,
+          i.grupo_raw,
+          i.usuario_raw,
+          COALESCE(d.nombre, i.nombre_push, c.titular, 'Desconocido') AS directorio_nombre,
+          d.roles AS directorio_rol,
+          d.moneda_socio AS directorio_moneda,
+          d.porcentaje_comision AS directorio_comision
+        FROM comprobantes_raw c
+        LEFT JOIN impactos_raw i ON TRIM(CAST(c.hash_largo AS text)) = TRIM(CAST(i.hash_largo AS text))
+        LEFT JOIN jz_directorio d ON (
+          (i.grupo_raw IS NOT NULL AND d.id_grupo IS NOT NULL AND TRIM(CAST(i.grupo_raw AS text)) = TRIM(CAST(d.id_grupo AS text)))
+          OR (i.usuario_raw IS NOT NULL AND d.id_grupo IS NOT NULL AND TRIM(CAST(i.usuario_raw AS text)) = TRIM(CAST(d.id_grupo AS text)))
         )
-        ORDER BY creado_en DESC LIMIT 100
-      `, [pattern, altPattern]);
+        WHERE (
+          c.instancia IS NULL 
+          OR LOWER(CAST(c.instancia AS text)) LIKE LOWER($1)
+          OR LOWER(CAST(i.instancia AS text)) LIKE LOWER($1)
+        )
+        ORDER BY c.creado_en DESC LIMIT 100
+      `, [filtro]);
 
-      return rows.map(r => ({
-        ...r,
-        hash_corto: r.hash_largo ? r.hash_largo.substring(0, 8) : 'Sin Hash',
-        nombre_push: r.ia_titular || 'Desconocido',
-        usuario_raw: r.ia_titular || 'Sin usuario',
-        grupo_raw: r.instancia || 'Sin grupo',
-        caption: r.referencia || 'Sin texto...',
-        ia_estado: r.ia_estado || 'PROCESADO'
-      }));
+      const map = new Map();
+      for (const r of rows) {
+        if (!map.has(r.hash_largo)) {
+          map.set(r.hash_largo, {
+            ...r,
+            nombre_push: r.directorio_nombre,
+            grupo_raw: r.grupo_raw || r.usuario_raw || 'Chat Directo', // Muestra el JID real o Chat Directo, NO la instancia
+            caption: r.caption || r.referencia || 'Sin texto...'
+          });
+        }
+      }
+
+      return Array.from(map.values());
     } catch (err) {
-      console.error('Error en obtenerLecturasIA:', err.message);
+      console.error('Error al consultar comprobantes_raw:', err.message);
       return [];
     }
   }
