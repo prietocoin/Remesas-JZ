@@ -2,7 +2,7 @@ const { pool } = require('../../config/db');
 
 class VisorRepository {
   /**
-   * Obtiene y agrupa las imágenes de impactos_raw consolidando múltiples envíos del mismo hash
+   * Obtiene y agrupa las imágenes de impactos_raw
    */
   async obtenerRawImagenes() {
     try {
@@ -18,7 +18,6 @@ class VisorRepository {
           r.url_imagen, 
           COALESCE(r.estado, 'RECIBIDO') AS estado, 
           r.instancia, 
-          COALESCE(r.timestamp_msg, EXTRACT(EPOCH FROM COALESCE(r.created_at, NOW())) * 1000) AS timestamp_msg,
           r.created_at
         FROM impactos_raw r
         LEFT JOIN jz_directorio d ON (
@@ -38,7 +37,7 @@ class VisorRepository {
           map.set(key, {
             id: r.id,
             hash_largo: r.hash_largo,
-            hash_corto: r.hash_corto,
+            hash_corto: r.hash_corto || (r.hash_largo ? r.hash_largo.substring(0, 8) : `id_${r.id}`),
             url_imagen: r.url_imagen,
             estado: r.estado,
             created_at: r.created_at,
@@ -76,13 +75,13 @@ class VisorRepository {
 
       return Array.from(map.values());
     } catch (err) {
-      console.error('Error en obtenerRawImagenes (impactos_raw):', err.message);
+      console.error('Error en obtenerRawImagenes:', err.message);
       return [];
     }
   }
 
   /**
-   * Obtiene la lectura de comprobantes_raw relacionándolos con impactos_raw y jz_directorio
+   * Obtiene la lectura de comprobantes_raw
    */
   async obtenerLecturasIA() {
     try {
@@ -95,7 +94,6 @@ class VisorRepository {
           COALESCE(r.usuario_raw, c.titular) AS usuario_raw,
           COALESCE(r.grupo_raw, c.instancia) AS grupo_raw,
           COALESCE(r.caption, c.referencia, 'Sin texto...') AS caption,
-          EXTRACT(EPOCH FROM COALESCE(c.creado_en, NOW())) * 1000 AS timestamp_msg,
           c.monto AS ia_monto,
           c.banco AS ia_banco,
           c.titular AS ia_titular,
@@ -122,9 +120,7 @@ class VisorRepository {
   }
 
   async obtenerAsesores() {
-    const { rows } = await pool.query(
-      "SELECT DISTINCT nombre_asesor FROM registros WHERE nombre_asesor IS NOT NULL AND nombre_asesor != '' ORDER BY nombre_asesor"
-    );
+    const { rows } = await pool.query("SELECT DISTINCT nombre_asesor FROM registros WHERE nombre_asesor IS NOT NULL AND nombre_asesor != '' ORDER BY nombre_asesor");
     return rows;
   }
 
