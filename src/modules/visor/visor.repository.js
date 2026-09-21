@@ -1,6 +1,9 @@
 const { pool } = require('../../config/db');
 
 class VisorRepository {
+  /**
+   * Obtiene y agrupa las imágenes de impactos_raw consolidando múltiples envíos del mismo hash
+   */
   async obtenerRawImagenes() {
     try {
       const { rows } = await pool.query(`
@@ -26,15 +29,16 @@ class VisorRepository {
         ORDER BY r.id DESC LIMIT 100
       `);
 
-      const agrupadosMap = new Map();
+      const map = new Map();
 
       for (const r of rows) {
-        const key = r.hash_corto || r.hash_largo || `id_${r.id}`;
-        if (!agrupadosMap.has(key)) {
-          agrupadosMap.set(key, {
+        const key = r.hash_largo || r.hash_corto || `id_${r.id}`;
+        
+        if (!map.has(key)) {
+          map.set(key, {
             id: r.id,
             hash_largo: r.hash_largo,
-            hash_corto: key,
+            hash_corto: r.hash_corto,
             url_imagen: r.url_imagen,
             estado: r.estado,
             created_at: r.created_at,
@@ -51,11 +55,14 @@ class VisorRepository {
             }]
           });
         } else {
-          const item = agrupadosMap.get(key);
+          const item = map.get(key);
           item.conteo += 1;
           if (r.estado === 'PROCESADO') item.estado = 'PROCESADO';
-          
-          const yaExiste = item.impactos.some(i => i.grupo_raw === r.grupo_raw && i.nombre_push === r.nombre_push);
+
+          const yaExiste = item.impactos.some(
+            i => i.grupo_raw === r.grupo_raw && i.nombre_push === r.nombre_push
+          );
+
           if (!yaExiste) {
             item.impactos.push({
               nombre_push: r.nombre_push,
@@ -67,13 +74,16 @@ class VisorRepository {
         }
       }
 
-      return Array.from(agrupadosMap.values());
+      return Array.from(map.values());
     } catch (err) {
-      console.error('Error en obtenerRawImagenes:', err.message);
+      console.error('Error en obtenerRawImagenes (impactos_raw):', err.message);
       return [];
     }
   }
 
+  /**
+   * Obtiene la lectura de comprobantes_raw relacionándolos con impactos_raw y jz_directorio
+   */
   async obtenerLecturasIA() {
     try {
       const { rows } = await pool.query(`
@@ -112,7 +122,9 @@ class VisorRepository {
   }
 
   async obtenerAsesores() {
-    const { rows } = await pool.query("SELECT DISTINCT nombre_asesor FROM registros WHERE nombre_asesor IS NOT NULL AND nombre_asesor != '' ORDER BY nombre_asesor");
+    const { rows } = await pool.query(
+      "SELECT DISTINCT nombre_asesor FROM registros WHERE nombre_asesor IS NOT NULL AND nombre_asesor != '' ORDER BY nombre_asesor"
+    );
     return rows;
   }
 
