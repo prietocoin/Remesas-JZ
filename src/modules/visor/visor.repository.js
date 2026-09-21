@@ -2,25 +2,31 @@ const { pool } = require('../../config/db');
 
 class VisorRepository {
   /**
-   * Consulta DIRECTA sobre impactos_raw sin JOINs frágiles
+   * Obtiene impactos_raw cruzados con jz_directorio
+   * Agrupa en memoria varios envíos del mismo hash en 1 sola tarjeta (con conteo 2x, 3x, etc.)
    */
   async obtenerRawImagenes() {
     try {
       const { rows } = await pool.query(`
         SELECT 
-          id,
-          hash_largo, 
-          COALESCE(hash_corto, SUBSTRING(hash_largo FROM 1 FOR 8), 'Sin Hash') AS hash_corto, 
-          grupo_raw, 
-          usuario_raw, 
-          COALESCE(nombre_push, usuario_raw, 'Desconocido') AS nombre_push, 
-          caption, 
-          url_imagen, 
-          COALESCE(estado, 'RECIBIDO') AS estado, 
-          created_at
-        FROM impactos_raw
-        WHERE url_imagen IS NOT NULL AND TRIM(CAST(url_imagen AS text)) != ''
-        ORDER BY id DESC LIMIT 100
+          i.id,
+          i.hash_largo, 
+          COALESCE(i.hash_corto, SUBSTRING(i.hash_largo FROM 1 FOR 8), 'Sin Hash') AS hash_corto, 
+          i.grupo_raw, 
+          i.usuario_raw, 
+          COALESCE(d.nombre, i.nombre_push, i.usuario_raw, 'Desconocido') AS nombre_socio, 
+          d.roles,
+          i.caption, 
+          i.url_imagen, 
+          COALESCE(i.estado, 'RECIBIDO') AS estado, 
+          i.created_at
+        FROM impactos_raw i
+        LEFT JOIN jz_directorio d ON (
+          (i.grupo_raw IS NOT NULL AND d.id_grupo IS NOT NULL AND TRIM(CAST(i.grupo_raw AS text)) = TRIM(CAST(d.id_grupo AS text)))
+          OR (i.usuario_raw IS NOT NULL AND d.id_grupo IS NOT NULL AND TRIM(CAST(i.usuario_raw AS text)) = TRIM(CAST(d.id_grupo AS text)))
+        )
+        WHERE i.url_imagen IS NOT NULL AND TRIM(CAST(i.url_imagen AS text)) != ''
+        ORDER BY i.id DESC LIMIT 150
       `);
 
       const map = new Map();
@@ -38,10 +44,12 @@ class VisorRepository {
             created_at: r.created_at,
             conteo: 1,
             impactos: [{
-              nombre_push: r.nombre_push,
+              id: r.id,
+              nombre_push: r.nombre_socio,
               usuario_raw: r.usuario_raw,
               grupo_raw: r.grupo_raw,
-              caption: r.caption
+              caption: r.caption,
+              roles: r.roles
             }]
           });
         } else {
@@ -52,15 +60,17 @@ class VisorRepository {
           }
 
           const yaExiste = item.impactos.some(
-            i => i.grupo_raw === r.grupo_raw && i.usuario_raw === r.usuario_raw
+            imp => imp.grupo_raw === r.grupo_raw && imp.usuario_raw === r.usuario_raw
           );
 
           if (!yaExiste) {
             item.impactos.push({
-              nombre_push: r.nombre_push,
+              id: r.id,
+              nombre_push: r.nombre_socio,
               usuario_raw: r.usuario_raw,
               grupo_raw: r.grupo_raw,
-              caption: r.caption
+              caption: r.caption,
+              roles: r.roles
             });
           }
         }
@@ -74,29 +84,52 @@ class VisorRepository {
   }
 
   /**
-   * Consulta DIRECTA sobre comprobantes_raw sin JOINs frágiles
+   * Obtiene comprobantes_raw cruzados con impactos_raw y jz_directorio
+   * Deduplica en memoria para mostrar solo 1 registro de IA por comprobante único
    */
   async obtenerLecturasIA() {
     try {
       const { rows } = await pool.query(`
         SELECT 
-          hash_largo,
-          SUBSTRING(hash_largo FROM 1 FOR 8) AS hash_corto,
-          url_r2 AS url_imagen,
-          titular AS nombre_push,
-          titular AS usuario_raw,
-          instancia AS grupo_raw,
-          referencia AS caption,
-          monto AS ia_monto,
-          banco AS ia_banco,
-          titular AS ia_titular,
-          moneda AS ia_moneda,
-          COALESCE(estado_ia, 'PROCESADO') AS ia_estado,
-          creado_en AS created_at
-        FROM comprobantes_raw
-        ORDER BY creado_en DESC LIMIT 50
+          c.hash_largo,
+          SUBSTRING(c.hash_largo FROM 1 FOR 8) AS hash_corto,
+          c.url_r2 AS url_imagen,
+          c.monto AS ia_monto,
+          c.banco AS ia_banco,
+          c.titular AS ia_titular,
+          c.moneda AS ia_moneda,
+          COALESCE(c.estado_ia, 'PROCESADO') AS ia_estado,
+          c.creado_en AS created_at,
+          c.referencia,
+          i.caption,
+          i.grupo_raw,
+          i.usuario_raw,
+          COALESCE(d.nombre, i.nombre_push, c.titular, 'Desconocido') AS directorio_nombre,
+          d.roles AS directorio_rol,
+          d.moneda_socio AS directorio_moneda,
+          d.porcentaje_comision AS directorio_comision
+        FROM comprobantes_raw c
+        LEFT JOIN impactos_raw i ON TRIM(CAST(c.hash_largo AS text)) = TRIM(CAST(i.hash_largo AS text))
+        LEFT JOIN jz_directorio d ON (
+          (i.grupo_raw IS NOT NULL AND d.id_grupo IS NOT NULL AND TRIM(CAST(i.grupo_raw AS text)) = TRIM(CAST(d.id_grupo AS text)))
+          OR (c.instancia IS NOT NULL AND d.id_grupo IS NOT NULL AND TRIM(CAST(c.instancia AS text)) = TRIM(CAST(d.id_grupo AS text)))
+        )
+        ORDER BY c.creado_en DESC LIMIT 100
       `);
-      return rows;
+
+      const map = new Map();
+      for (const r of rows) {
+        const key = r.hash_largo;
+        if (!map.has(key)) {
+          map.set(key, {
+            ...r,
+            nombre_push: r.directorio_nombre,
+            caption: r.caption || r.referencia || 'Sin texto...'
+          });
+        }
+      }
+
+      return Array.from(map.values());
     } catch (err) {
       console.error('Error al consultar comprobantes_raw:', err.message);
       return [];
