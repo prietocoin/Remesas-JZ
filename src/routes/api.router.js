@@ -27,10 +27,12 @@ router.get('/directorio/grupo/:id_grupo', (req, res) => directorioController.get
 // Módulo Visor & Auditoría (Instancia JOHN)
 router.get('/raw-imagenes', (req, res) => visorController.getRawImagenes(req, res));
 router.get('/lecturas-ia', (req, res) => visorController.getLecturasIA(req, res));
-router.get('/asesores', (req, res) => visorController.getAsesores(req, res));
-router.get('/hashes', (req, res) => visorController.getHashes(req, res));
-router.get('/remesas', (req, res) => visorController.getRemesas(req, res));
-router.get('/tabla/:nombre', (req, res) => visorController.getTablaGenerica(req, res));
-router.put('/remesas/:id', (req, res) => visorController.updateRemesa(req, res));
+router.put('/lecturas-ia/:hash', (req, res) => visorController.actualizarLecturaIA(req, res));
+router.delete('/lecturas-ia/:hash', (req, res) => visorController.eliminarLecturaIA(req, res));
+router.get('/asesores', (req, res) => visorController.obtenerAsesores(req, res));
+router.get('/hashes', (req, res) => visorController.obtenerHashes(req, res));
+router.get('/remesas', (req, res) => visorController.obtenerRemesas(req, res));
+router.get('/tabla/:nombre', (req, res) => visorController.obtenerTablaGenerica(req, res));
+router.put('/remesas/:id', (req, res) => visorController.actualizarRemesa(req, res));
 
 module.exports = router;
