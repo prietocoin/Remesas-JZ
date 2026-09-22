@@ -1158,29 +1158,35 @@
         },
 
         async solicitarRelecturaIA() {
-          if (!this.formEditIA.hash_largo) return;
+          const hash = this.formEditIA?.hash_largo || this.itemIASeleccionado?.hash_largo;
+          
+          if (!hash) {
+            return alert('⚠️ No se encontró el Hash del comprobante.');
+          }
+
           if (!confirm('¿Deseas enviar este comprobante a re-procesar con Gemini?')) return;
 
           this.cargandoRelecturaIA = true;
 
           try {
-            const res = await fetch(`/api/comprobantes/${encodeURIComponent(this.formEditIA.hash_largo)}/releer`, {
+            const res = await this.fetchConTimeout(`/api/comprobantes/${encodeURIComponent(hash)}/releer`, {
               method: 'POST',
-              headers: { 'Content-Type': 'application/json' }
+              headers: { 'Content-Type': 'application/json' },
+              timeout: 8000
             });
 
-            const data = await res.json();
+            const data = await res.json().catch(() => ({}));
 
             if (res.ok && data.success) {
               alert('⚡ Solicitud enviada a la cola. Gemini volverá a leer el comprobante.');
               this.modalAccionIA = false;
               await this.cargarLecturaIA();
             } else {
-              alert('❌ Error al solicitar re-lectura: ' + (data.error || 'Error en servidor'));
+              alert(`❌ Error (HTTP ${res.status}): ` + (data.error || 'Error en el servidor'));
             }
           } catch (e) {
-            console.error(e);
-            alert('❌ Error de conexión al solicitar re-lectura.');
+            console.error('Error al solicitar re-lectura:', e);
+            alert('❌ Error de conexión al solicitar re-lectura: ' + e.message);
           } finally {
             this.cargandoRelecturaIA = false;
           }
