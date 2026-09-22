@@ -907,12 +907,20 @@
         </div>
       </div>
 
-      <!-- BOTONES DE ACCIÓN -->
+      <!-- BOTONES DE ACCIÓN (INCLUYE RELEER IA) -->
       <div class="flex justify-between items-center pt-3 border-t">
         <button @click="eliminarComprobanteIA()" class="px-3 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-lg text-xs font-bold transition shadow">
           🗑️ Eliminar
         </button>
         <div class="flex gap-2">
+          <!-- BOTÓN RELEER IA -->
+          <button @click="solicitarRelecturaIA()" 
+                  :disabled="cargandoRelecturaIA"
+                  type="button" 
+                  class="px-3 py-2 bg-amber-500 hover:bg-amber-600 text-white rounded-lg text-xs font-bold transition shadow flex items-center gap-1 disabled:opacity-50">
+            <span x-show="!cargandoRelecturaIA">⚡ Releer IA</span>
+            <span x-show="cargandoRelecturaIA" class="animate-spin">⏳ Encolando...</span>
+          </button>
           <button @click="modalAccionIA = false" class="px-3 py-2 border border-gray-300 rounded-lg text-xs font-semibold text-gray-600 hover:bg-gray-50">
             Cancelar
           </button>
@@ -961,6 +969,7 @@
 
         // Modal IA
         modalAccionIA: false,
+        cargandoRelecturaIA: false,
         itemIASeleccionado: null,
         formEditIA: { hash_largo: '', ia_monto: '', ia_banco: '', ia_titular: '', ia_moneda: '', ia_estado: '', referencia: '' },
 
@@ -1146,6 +1155,35 @@
             referencia: item.referencia || ''
           };
           this.modalAccionIA = true;
+        },
+
+        async solicitarRelecturaIA() {
+          if (!this.formEditIA.hash_largo) return;
+          if (!confirm('¿Deseas enviar este comprobante a re-procesar con Gemini?')) return;
+
+          this.cargandoRelecturaIA = true;
+
+          try {
+            const res = await fetch(`/api/comprobantes/${encodeURIComponent(this.formEditIA.hash_largo)}/releer`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' }
+            });
+
+            const data = await res.json();
+
+            if (res.ok && data.success) {
+              alert('⚡ Solicitud enviada a la cola. Gemini volverá a leer el comprobante.');
+              this.modalAccionIA = false;
+              await this.cargarLecturaIA();
+            } else {
+              alert('❌ Error al solicitar re-lectura: ' + (data.error || 'Error en servidor'));
+            }
+          } catch (e) {
+            console.error(e);
+            alert('❌ Error de conexión al solicitar re-lectura.');
+          } finally {
+            this.cargandoRelecturaIA = false;
+          }
         },
 
         async guardarCambiosIA() {
