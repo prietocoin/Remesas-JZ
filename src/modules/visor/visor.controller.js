@@ -23,6 +23,26 @@ class VisorController {
     }
   }
 
+  async actualizarLecturaIA(req, res) {
+    try {
+      await visorService.actualizarLecturaIA(req.params.hash, req.body);
+      return res.json({ success: true });
+    } catch (err) {
+      console.error('Error en controller actualizarLecturaIA:', err);
+      return res.status(500).json({ success: false, error: err.message });
+    }
+  }
+
+  async eliminarLecturaIA(req, res) {
+    try {
+      await visorService.eliminarLecturaIA(req.params.hash);
+      return res.json({ success: true });
+    } catch (err) {
+      console.error('Error en controller eliminarLecturaIA:', err);
+      return res.status(500).json({ success: false, error: err.message });
+    }
+  }
+
   getRawImagenes(req, res) {
     return this.obtenerRawImagenes(req, res);
   }
@@ -81,6 +101,8 @@ const controller = new VisorController();
 
 controller.obtenerRawImagenes = controller.obtenerRawImagenes.bind(controller);
 controller.obtenerLecturasIA = controller.obtenerLecturasIA.bind(controller);
+controller.actualizarLecturaIA = controller.actualizarLecturaIA.bind(controller);
+controller.eliminarLecturaIA = controller.eliminarLecturaIA.bind(controller);
 controller.getRawImagenes = controller.getRawImagenes.bind(controller);
 controller.getLecturasIA = controller.getLecturasIA.bind(controller);
 
