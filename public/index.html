@@ -317,7 +317,7 @@
           <div class="flex justify-between items-center border-b border-gray-100 pb-3">
             <div>
               <h3 class="text-xs font-bold text-indigo-900 uppercase tracking-wider">Comisión por Par (%)</h3>
-              <p class="text-[10px] text-gray-400">Pares oficiales configurados para JOHN (Valor calculado en verde)</p>
+              <p class="text-[10px] text-gray-400">Pares oficiales configurados para JOHN (Valor calculated en verde)</p>
             </div>
             <button @click="abrirModalNuevoPar()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs px-3 py-1.5 rounded-lg shadow transition flex items-center gap-1">
               <span>+ Agregar Par</span>
@@ -423,17 +423,17 @@
         </div>
       </div>
 
-      <!-- VISTA ESPECIALIZADA: LECTURA IA CON FILTROS ATENEA -->
+      <!-- VISTA ESPECIALIZADA: LECTURA IA CON FILTROS ESTILO J. ZORRILLA -->
       <div x-show="tablaActiva === 'lectura_ia'" x-cloak class="max-w-7xl mx-auto space-y-4 w-full">
         
-        <!-- BARRA DE FILTROS ESTILO ATENEA -->
-        <div class="bg-slate-900 text-white p-3 rounded-xl shadow-lg border border-slate-800">
-          <div class="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-9 gap-2 items-end text-[10px] font-bold tracking-wider">
+        <!-- BARRA DE FILTROS INTEGRADA A LA PALETA J. ZORRILLA -->
+        <div class="bg-zorrilla-dark text-white p-3.5 rounded-xl shadow-md border border-zorrilla">
+          <div class="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-9 gap-2.5 items-end text-[10px] font-bold tracking-wider">
             
             <!-- 1. ROL -->
             <div class="space-y-1">
-              <label class="text-emerald-400 block uppercase">1. Rol</label>
-              <select x-model="filtroRol" class="w-full bg-slate-800 border border-slate-700 text-white p-1.5 rounded outline-none focus:border-indigo-500 font-semibold truncate">
+              <label class="text-indigo-200 block uppercase">1. Rol</label>
+              <select x-model="filtroRol" class="w-full bg-zorrilla border border-zorrilla text-white p-1.5 rounded-lg outline-none focus:ring-1 focus:ring-indigo-300 font-semibold truncate">
                 <option value="">Todos los Roles</option>
                 <template x-for="rol in listaRolesUnicos" :key="rol">
                   <option :value="rol" x-text="rol"></option>
@@ -443,8 +443,8 @@
 
             <!-- 2. SOCIO / ENTIDAD -->
             <div class="space-y-1">
-              <label class="text-purple-400 block uppercase">2. Socio / Entidad</label>
-              <select x-model="filtroSocio" class="w-full bg-slate-800 border border-slate-700 text-white p-1.5 rounded outline-none focus:border-indigo-500 font-semibold truncate">
+              <label class="text-blue-200 block uppercase">2. Socio / Entidad</label>
+              <select x-model="filtroSocio" class="w-full bg-zorrilla border border-zorrilla text-white p-1.5 rounded-lg outline-none focus:ring-1 focus:ring-indigo-300 font-semibold truncate">
                 <option value="">Todos los Socios</option>
                 <template x-for="socio in listaSociosUnicos" :key="socio">
                   <option :value="socio" x-text="socio"></option>
@@ -454,20 +454,20 @@
 
             <!-- 3. FECHA INICIO -->
             <div class="space-y-1">
-              <label class="text-cyan-400 block uppercase">3. Fecha Inicio</label>
-              <input type="date" x-model="filtroFechaInicio" class="w-full bg-slate-800 border border-slate-700 text-white p-1.5 rounded outline-none focus:border-indigo-500 font-semibold">
+              <label class="text-indigo-200 block uppercase">3. Fecha Inicio</label>
+              <input type="date" x-model="filtroFechaInicio" class="w-full bg-zorrilla border border-zorrilla text-white p-1.5 rounded-lg outline-none focus:ring-1 focus:ring-indigo-300 font-semibold">
             </div>
 
             <!-- 4. FECHA FIN -->
             <div class="space-y-1">
-              <label class="text-cyan-400 block uppercase">4. Fecha Fin</label>
-              <input type="date" x-model="filtroFechaFin" class="w-full bg-slate-800 border border-slate-700 text-white p-1.5 rounded outline-none focus:border-indigo-500 font-semibold">
+              <label class="text-indigo-200 block uppercase">4. Fecha Fin</label>
+              <input type="date" x-model="filtroFechaFin" class="w-full bg-zorrilla border border-zorrilla text-white p-1.5 rounded-lg outline-none focus:ring-1 focus:ring-indigo-300 font-semibold">
             </div>
 
             <!-- 5. DESDE HASH -->
             <div class="space-y-1">
-              <label class="text-amber-400 block uppercase">5. Desde Hash</label>
-              <select x-model="filtroDesdeHash" class="w-full bg-slate-800 border border-slate-700 text-amber-300 p-1.5 rounded outline-none focus:border-indigo-500 font-mono font-bold truncate">
+              <label class="text-amber-300 block uppercase">5. Desde Hash</label>
+              <select x-model="filtroDesdeHash" class="w-full bg-zorrilla border border-zorrilla text-amber-300 p-1.5 rounded-lg outline-none focus:ring-1 focus:ring-indigo-300 font-mono font-bold truncate">
                 <option value="">NINGUNO (TODOS)</option>
                 <template x-for="h in listaHashesOrdenados" :key="h">
                   <option :value="h" x-text="h"></option>
@@ -477,8 +477,8 @@
 
             <!-- 6. HASTA HASH -->
             <div class="space-y-1">
-              <label class="text-amber-400 block uppercase">6. Hasta Hash</label>
-              <select x-model="filtroHastaHash" class="w-full bg-slate-800 border border-slate-700 text-amber-300 p-1.5 rounded outline-none focus:border-indigo-500 font-mono font-bold truncate">
+              <label class="text-amber-300 block uppercase">6. Hasta Hash</label>
+              <select x-model="filtroHastaHash" class="w-full bg-zorrilla border border-zorrilla text-amber-300 p-1.5 rounded-lg outline-none focus:ring-1 focus:ring-indigo-300 font-mono font-bold truncate">
                 <option value="">NINGUNO (TODOS)</option>
                 <template x-for="h in listaHashesOrdenados" :key="h">
                   <option :value="h" x-text="h"></option>
@@ -488,8 +488,8 @@
 
             <!-- 7. ORDENAR POR -->
             <div class="space-y-1">
-              <label class="text-blue-400 block uppercase">7. Ordenar Por</label>
-              <select x-model="filtroOrden" class="w-full bg-slate-800 border border-slate-700 text-white p-1.5 rounded outline-none focus:border-indigo-500 font-semibold truncate">
+              <label class="text-blue-200 block uppercase">7. Ordenar Por</label>
+              <select x-model="filtroOrden" class="w-full bg-zorrilla border border-zorrilla text-white p-1.5 rounded-lg outline-none focus:ring-1 focus:ring-indigo-300 font-semibold truncate">
                 <option value="recientes">📅 Recientes primero</option>
                 <option value="antiguos">📅 Antiguos primero</option>
                 <option value="monto_mayor">💰 Mayor Monto</option>
@@ -498,27 +498,27 @@
 
             <!-- 8. BUSCAR HASH / TEXTO -->
             <div class="space-y-1">
-              <label class="text-gray-300 block uppercase">Buscar Hash</label>
-              <input type="text" x-model="filtroBuscarHash" placeholder="Buscar..." class="w-full bg-slate-800 border border-slate-700 text-white p-1.5 rounded outline-none focus:border-indigo-500 font-semibold">
+              <label class="text-blue-200 block uppercase">Buscar Hash</label>
+              <input type="text" x-model="filtroBuscarHash" placeholder="Buscar..." class="w-full bg-zorrilla border border-zorrilla text-white p-1.5 rounded-lg outline-none focus:ring-1 focus:ring-indigo-300 font-semibold placeholder-blue-300">
             </div>
 
             <!-- 9. CHECKBOX DUP -->
-            <div class="flex items-center justify-center pb-1">
-              <label class="flex items-center gap-1.5 cursor-pointer bg-slate-800 hover:bg-slate-700 border border-slate-700 px-2 py-1.5 rounded">
-                <input type="checkbox" x-model="filtroSoloDuplicados" class="rounded accent-indigo-500">
-                <span class="text-xs text-indigo-300 font-bold">Dup</span>
+            <div class="flex items-center justify-center pb-0.5">
+              <label class="flex items-center gap-1.5 cursor-pointer bg-zorrilla hover:bg-indigo-600 border border-zorrilla px-2.5 py-1.5 rounded-lg transition-colors">
+                <input type="checkbox" x-model="filtroSoloDuplicados" class="rounded accent-indigo-400">
+                <span class="text-xs text-indigo-100 font-bold">Dup</span>
               </label>
             </div>
 
           </div>
         </div>
 
-        <!-- TARJETAS DE LECTURA IA CON ACCIÓN PARA MODAL -->
+        <!-- TARJETAS DE LECTURA IA Y SUS IMPACTOS MULTIPLES -->
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
           <template x-for="(item, idx) in lecturasIAFiltradas" :key="item.hash_largo || idx">
             <div class="bg-white rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-all overflow-hidden flex flex-col justify-between">
               
-              <!-- Cabecera -->
+              <!-- Cabecera Tarjeta -->
               <div class="p-3 bg-gray-50 border-b border-gray-100 flex justify-between items-center text-xs">
                 <div class="flex items-center gap-2">
                   <span class="font-mono text-[11px] bg-indigo-100 text-indigo-900 border border-indigo-200 px-2 py-0.5 rounded font-bold" x-text="'#' + item.hash_corto"></span>
@@ -530,30 +530,30 @@
                         :class="item.ia_estado === 'PROCESADO' ? 'bg-emerald-100 text-emerald-800 border border-emerald-300' : 'bg-amber-100 text-amber-800 border border-amber-300'" 
                         x-text="item.ia_estado"></span>
 
-                  <button @click="abrirModalIA(item)" class="bg-slate-100 hover:bg-indigo-600 hover:text-white text-gray-600 p-1.5 rounded-lg border border-gray-300 transition-colors shadow-sm" title="Editar / Borrar">
+                  <button @click="abrirModalIA(item)" class="bg-indigo-50 hover:bg-zorrilla hover:text-white text-indigo-900 p-1.5 rounded-lg border border-indigo-200 transition-colors shadow-sm" title="Editar / Borrar Comprobante">
                     ⚙️
                   </button>
                 </div>
               </div>
 
-              <!-- Cuerpo -->
-              <div class="p-3.5 flex gap-3.5 items-start flex-1">
+              <!-- Cuerpo de la Tarjeta -->
+              <div class="p-3.5 flex flex-col sm:flex-row gap-3.5 items-start flex-1">
                 <!-- Imagen comprobante -->
-                <div class="w-32 h-44 bg-gray-100 rounded-lg overflow-hidden border border-gray-200 shrink-0 relative group">
+                <div class="w-full sm:w-32 h-44 bg-gray-100 rounded-lg overflow-hidden border border-gray-200 shrink-0 relative group">
                   <img :src="item.url_imagen" alt="Comprobante" class="w-full h-full object-cover">
-                  <a :href="item.url_imagen" target="_blank" class="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white text-xs font-bold">🔍 Ampliar</a>
+                  <a :href="item.url_imagen" target="_blank" class="absolute inset-0 bg-zorrilla/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white text-xs font-bold">🔍 Ampliar</a>
                 </div>
 
-                <!-- Información de Extracción e Impactos -->
-                <div class="flex-1 space-y-2 text-xs min-w-0 max-h-56 overflow-y-auto pr-1">
+                <!-- Información de Extracción y de Impactos -->
+                <div class="flex-1 space-y-2 text-xs min-w-0 max-h-56 overflow-y-auto pr-1 w-full">
                   
                   <!-- Lectura OCR / IA -->
-                  <div class="bg-indigo-50/50 p-2 rounded-lg border border-indigo-100 space-y-1">
+                  <div class="bg-indigo-50/50 p-2.5 rounded-lg border border-indigo-100 space-y-1">
                     <span class="text-[9px] text-indigo-700 font-extrabold uppercase tracking-wider block">✨ Extracción IA</span>
                     <div class="grid grid-cols-2 gap-2">
                       <div>
                         <p class="text-[10px] text-gray-400 font-bold uppercase">Monto</p>
-                        <p class="font-bold text-emerald-700 text-sm" x-text="item.ia_monto ? ((item.ia_moneda || '') + ' ' + Number(item.ia_monto).toFixed(2)) : 'Sin lectura'"></p>
+                        <p class="font-bold text-emerald-700 text-sm truncate" x-text="item.ia_monto ? ((item.ia_moneda || '') + ' ' + Number(item.ia_monto).toFixed(2)) : 'Sin lectura'"></p>
                       </div>
                       <div>
                         <p class="text-[10px] text-gray-400 font-bold uppercase">Banco</p>
@@ -569,14 +569,14 @@
                   <!-- Múltiples Impactos WhatsApp (1x, 2x, etc.) -->
                   <div class="space-y-1.5 pt-1">
                     <template x-for="(imp, iIdx) in item.impactos" :key="iIdx">
-                      <div class="bg-gray-50 p-2 rounded border border-gray-200 text-[10px] space-y-0.5">
-                        <div class="flex justify-between font-bold text-indigo-900">
-                          <span x-text="'IMPACTO ' + (iIdx + 1) + 'X'"></span>
-                          <span x-text="imp.nombre_socio"></span>
+                      <div class="bg-gray-50 p-2 rounded-lg border border-gray-200 text-[10px] space-y-0.5">
+                        <div class="flex justify-between font-bold text-indigo-950">
+                          <span class="text-[9px] bg-indigo-100 text-indigo-800 px-1.5 py-0.5 rounded" x-text="'IMPACTO ' + (iIdx + 1) + 'X'"></span>
+                          <span class="truncate max-w-[140px]" x-text="imp.nombre_socio"></span>
                         </div>
                         <div class="flex justify-between text-gray-500 font-mono">
                           <span>JID:</span>
-                          <span class="truncate max-w-[130px]" x-text="imp.grupo_raw"></span>
+                          <span class="truncate max-w-[140px]" x-text="imp.grupo_raw"></span>
                         </div>
                         <p class="text-gray-600 italic bg-white p-1 rounded border border-gray-100 line-clamp-2" x-text="imp.caption"></p>
                       </div>
@@ -596,7 +596,7 @@
           </template>
         </div>
 
-        <div x-show="lecturasIAFiltradas.length === 0" class="p-12 text-center text-gray-400 italic bg-white rounded-lg border border-gray-200">
+        <div x-show="lecturasIAFiltradas.length === 0" class="p-12 text-center text-gray-400 italic bg-white rounded-xl border border-gray-200">
           No se encontraron registros que coincidan con los filtros aplicados.
         </div>
       </div>
