@@ -9,6 +9,14 @@ class VisorService {
     return await visorRepository.obtenerLecturasIA(instancia);
   }
 
+  async actualizarLecturaIA(hash, datos) {
+    return await visorRepository.actualizarLecturaIA(hash, datos);
+  }
+
+  async eliminarLecturaIA(hash) {
+    return await visorRepository.eliminarLecturaIA(hash);
+  }
+
   async obtenerAsesores() {
     return await visorRepository.obtenerAsesores();
   }
