@@ -156,19 +156,19 @@
               <!-- USD -->
               <div class="bg-amber-50/50 border border-amber-200 p-3.5 rounded-lg">
                 <label class="text-xs text-amber-800 font-bold block mb-1 uppercase tracking-wider">USD</label>
-                <input type="number" step="any" x-model.number="borradorTasas.USD" class="w-full bg-white text-gray-900 font-bold text-base p-2 rounded border border-amber-300 outline-none focus:ring-1 focus:ring-amber-500">
+                <input type="number" step="any" x-model.number="borradorTasas.USD" @input="actualizarParesAutomaticosBorrador()" class="w-full bg-white text-gray-900 font-bold text-base p-2 rounded border border-amber-300 outline-none focus:ring-1 focus:ring-amber-500">
               </div>
 
               <!-- PEN -->
               <div class="bg-amber-50/50 border border-amber-200 p-3.5 rounded-lg">
                 <label class="text-xs text-amber-800 font-bold block mb-1 uppercase tracking-wider">PEN</label>
-                <input type="number" step="any" x-model.number="borradorTasas.PEN" class="w-full bg-white text-gray-900 font-bold text-base p-2 rounded border border-amber-300 outline-none focus:ring-1 focus:ring-amber-500">
+                <input type="number" step="any" x-model.number="borradorTasas.PEN" @input="actualizarParesAutomaticosBorrador()" class="w-full bg-white text-gray-900 font-bold text-base p-2 rounded border border-amber-300 outline-none focus:ring-1 focus:ring-amber-500">
               </div>
 
               <!-- VES -->
               <div class="bg-amber-50/50 border border-amber-200 p-3.5 rounded-lg">
                 <label class="text-xs text-amber-800 font-bold block mb-1 uppercase tracking-wider">VES</label>
-                <input type="number" step="any" x-model.number="borradorTasas.VES" class="w-full bg-white text-gray-900 font-bold text-base p-2 rounded border border-amber-300 outline-none focus:ring-1 focus:ring-amber-500">
+                <input type="number" step="any" x-model.number="borradorTasas.VES" @input="actualizarParesAutomaticosBorrador()" class="w-full bg-white text-gray-900 font-bold text-base p-2 rounded border border-amber-300 outline-none focus:ring-1 focus:ring-amber-500">
               </div>
             </div>
           </div>
@@ -181,7 +181,7 @@
             <div class="space-y-2">
               <h4 class="text-xs font-bold text-amber-800 uppercase tracking-wider flex items-center gap-1.5">
                 <span>⚡ Automáticos</span>
-                <span class="text-[10px] text-amber-600 font-normal normal-case">(Pares calculados / estándar del sistema)</span>
+                <span class="text-[10px] text-amber-600 font-normal normal-case">(monA ➔ monB = monB / monA)</span>
               </h4>
               <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
                 <template x-for="p in paresAutomaticos" :key="p.key">
@@ -305,9 +305,9 @@
         correoZelleActivo: 'GM Sports 21 LLC',
         borradorTasas: {
           USD: 1, PEN: 3.36, VES: 956.5,
-          USD_VES: 855, PEN_VES: 263, PEN_COP: 842, COP_VES: 3.61, MXN_VES: 46.97,
+          USD_VES: 956.5, PEN_VES: 284.67, VES_PEN: 0.0035, USD_PEN: 3.36,
           PYP_VES: 732, ESP_VES: 0.8, BIZ_VES: 0.78, ARS_VES: 0.53, VES_COP: 3.05,
-          VES_PEN: 299, PEN_CLP: 247, USD_COP: 2717, USD_PEN: 3.03, COP_PEN: 1041
+          PEN_COP: 842, PEN_CLP: 247, USD_COP: 2717, COP_PEN: 1041, COP_VES: 3.61, MXN_VES: 46.97
         },
         borradorCorreoZelle: 'GM Sports 21 LLC',
         factoresMatriz: {},
@@ -334,30 +334,32 @@
         paresJZ: [],
 
         get paresAutomaticos() {
-          const autoKeys = [
-            'USD_VES',
-            'PEN_VES',
-            'VES_PEN',
-            'USD_PEN'
-          ];
+          const autoKeys = ['USD_VES', 'PEN_VES', 'VES_PEN', 'USD_PEN'];
           return (this.paresJZ || []).filter(p => autoKeys.includes(p.key));
         },
 
         get paresManuales() {
-          const manualKeys = [
-            'PYP_VES',
-            'ESP_VES',
-            'BIZ_VES',
-            'PEN_COP',
-            'COP_VES',
-            'MXN_VES',
-            'ARS_VES',
-            'VES_COP',
-            'PEN_CLP',
-            'USD_COP',
-            'COP_PEN'
-          ];
-          return (this.paresJZ || []).filter(p => manualKeys.includes(p.key));
+          const autoKeys = ['USD_VES', 'PEN_VES', 'VES_PEN', 'USD_PEN'];
+          return (this.paresJZ || []).filter(p => !autoKeys.includes(p.key));
+        },
+
+        actualizarParesAutomaticosBorrador() {
+          const usd = parseFloat(this.borradorTasas.USD || 0);
+          const pen = parseFloat(this.borradorTasas.PEN || 0);
+          const ves = parseFloat(this.borradorTasas.VES || 0);
+
+          if (usd > 0 && ves > 0) {
+            this.borradorTasas.USD_VES = this.truncarDinamico(ves / usd);
+          }
+          if (pen > 0 && ves > 0) {
+            this.borradorTasas.PEN_VES = this.truncarDinamico(ves / pen);
+          }
+          if (ves > 0 && pen > 0) {
+            this.borradorTasas.VES_PEN = this.truncarDinamico(pen / ves);
+          }
+          if (usd > 0 && pen > 0) {
+            this.borradorTasas.USD_PEN = this.truncarDinamico(pen / usd);
+          }
         },
 
         async fetchConTimeout(resource, options = {}) {
@@ -426,6 +428,25 @@
 
         calcularValorPar(parKey) {
           const t = this.tasasActivas || {};
+          const key = String(parKey).toUpperCase();
+
+          // Fórmula para pares automáticos: monB / monA
+          const autoKeys = ['USD_VES', 'PEN_VES', 'VES_PEN', 'USD_PEN'];
+          if (autoKeys.includes(key)) {
+            const parts = key.split('_');
+            const orig = parts[0];
+            const dest = parts[1];
+            const valA = parseFloat(t[orig] || 0);
+            const valB = parseFloat(t[dest] || 0);
+            if (valA > 0) {
+              const res = valB / valA;
+              const trunc = this.truncarDinamico(res);
+              return trunc ? trunc.toLocaleString('es-ES') : '0';
+            }
+            return '0';
+          }
+
+          // Lógica para pares manuales
           const COP = parseFloat(t.COP || 0);
           const VES = parseFloat(t.VES || 0);
           const PEN = parseFloat(t.PEN || 0);
@@ -438,31 +459,21 @@
 
           const f = (orig, dest) => this.obtenerFactorPar(orig, dest);
 
-          const rawPEN_VES = PEN ? (1 / PEN) * VES * f('PEN', 'VES') : 0;
-          const rawUSD_VES = USD ? (1 / USD) * VES * f('USD', 'VES') : 0;
-          const rawCOP_VES = VES ? (COP / VES) / f('COP', 'VES') : 0;
-
           let val = 0;
-          const key = String(parKey).toUpperCase();
-
           switch (key) {
             case 'PYP_VES': val = PYP * f('PYP', 'VES'); break;
             case 'ESP_VES': val = ESP * f('ESP', 'VES'); break;
             case 'BIZ_VES': val = ESP * f('BIZ', 'VES'); break;
 
-            case 'COP_VES': val = rawCOP_VES; break;
+            case 'COP_VES': val = VES ? (COP / VES) / f('COP', 'VES') : 0; break;
             case 'COP_PEN': val = PEN ? (COP / PEN) / f('COP', 'PEN') : 0; break;
-            case 'VES_PEN': val = PEN ? (VES / PEN) / f('VES', 'PEN') : 0; break;
 
-            case 'USD_VES': val = rawUSD_VES; break;
-            case 'PEN_VES': val = rawPEN_VES; break;
             case 'PEN_COP': val = PEN ? (1 / PEN) * COP * f('PEN', 'COP') : 0; break;
             case 'MXN_VES': val = MXN ? (1 / MXN) * VES * f('MXN', 'VES') : 0; break;
             case 'ARS_VES': val = ARS ? (1 / ARS) * VES * f('ARS', 'VES') : 0; break;
             case 'VES_COP': val = VES ? (1 / VES) * COP * f('VES', 'COP') : 0; break;
             case 'PEN_CLP': val = PEN ? (1 / PEN) * CLP * f('PEN', 'CLP') : 0; break;
             case 'USD_COP': val = USD ? (1 / USD) * COP * f('USD', 'COP') : 0; break;
-            case 'USD_PEN': val = USD ? (1 / USD) * PEN * f('USD', 'PEN') : 0; break;
 
             default: val = 0;
           }
@@ -491,6 +502,7 @@
               if (data && data.success && data.rates) {
                 this.borradorTasas = { ...this.borradorTasas, ...data.rates };
                 this.borradorCorreoZelle = data.correo_zelle || this.correoZelleActivo || 'GM Sports 21 LLC';
+                this.actualizarParesAutomaticosBorrador();
                 if (!silencioso) alert('✅ Borrador cargado.');
                 return;
               }
