@@ -211,7 +211,7 @@
               </div>
             </div>
 
-            <!-- 3. INVERSA (Última sección) -->
+            <!-- 3. INVERSA -->
             <div class="space-y-2 pt-3 border-t border-dashed border-amber-200/50">
               <h4 class="text-xs font-bold text-amber-800 uppercase tracking-wider flex items-center gap-1.5">
                 <span>🔄 Inversa</span>
@@ -421,9 +421,9 @@
         formatearNombreMoneda(m) {
           if (!m) return '';
           const clave = String(m).toUpperCase().trim();
-          if (clave === 'ESP') return 'Europa (EUR)';
-          if (clave === 'PYP') return 'PayPal';
-          if (clave === 'BIZ') return 'Bizum';
+          if (clave === 'ESP' || clave === 'EUR') return 'Europa (EUR)';
+          if (clave === 'PYP' || clave === 'PAYPAL') return 'PayPal';
+          if (clave === 'BIZ' || clave === 'BIZUM') return 'Bizum';
           return clave;
         },
 
