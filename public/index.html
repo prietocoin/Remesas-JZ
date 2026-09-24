@@ -275,8 +275,8 @@
       
       <div class="space-y-3">
         <div>
-          <label class="block text-xs font-semibold text-gray-700 mb-1">Moneda Origen (Ej. JZ_PEN, USD)</label>
-          <input type="text" x-model="nuevoParForm.orig" placeholder="EJ. JZ_PEN" class="w-full border border-gray-300 p-2 rounded text-xs font-bold uppercase focus:ring-2 focus:ring-indigo-500 outline-none">
+          <label class="block text-xs font-semibold text-gray-700 mb-1">Moneda Origen (Ej. USD, PEN)</label>
+          <input type="text" x-model="nuevoParForm.orig" placeholder="EJ. USD" class="w-full border border-gray-300 p-2 rounded text-xs font-bold uppercase focus:ring-2 focus:ring-indigo-500 outline-none">
         </div>
         <div>
           <label class="block text-xs font-semibold text-gray-700 mb-1">Moneda Destino (Ej. VES, COP)</label>
@@ -307,8 +307,7 @@
           USD: 1, PEN: 3.36, VES: 956.5,
           USD_VES: 855, PEN_VES: 263, PEN_COP: 842, COP_VES: 3.61, MXN_VES: 46.97,
           PYP_VES: 732, ESP_VES: 0.8, BIZ_VES: 0.78, ARS_VES: 0.53, VES_COP: 3.05,
-          VES_PEN: 299, PEN_CLP: 247, USD_COP: 2717, USD_PEN: 3.03, COP_PEN: 1041,
-          ZX_PEN_VES: 237, JZ_PEN_VES: 237, JZ_USD_VES: 769, JZ_COP_VES: 3.25
+          VES_PEN: 299, PEN_CLP: 247, USD_COP: 2717, USD_PEN: 3.03, COP_PEN: 1041
         },
         borradorCorreoZelle: 'GM Sports 21 LLC',
         factoresMatriz: {},
@@ -320,10 +319,6 @@
           { key: 'PEN_VES', orig: 'PEN', dest: 'VES', label: 'PEN ➔ VES' },
           { key: 'VES_PEN', orig: 'VES', dest: 'PEN', label: 'VES ➔ PEN' },
           { key: 'USD_PEN', orig: 'USD', dest: 'PEN', label: 'USD ➔ PEN' },
-          { key: 'ZX_PEN_VES', orig: 'ZX_PEN', dest: 'VES', label: 'ZX_PEN ➔ VES' },
-          { key: 'JZ_PEN_VES', orig: 'JZ_PEN', dest: 'VES', label: 'JZ_PEN ➔ VES' },
-          { key: 'JZ_USD_VES', orig: 'JZ_USD', dest: 'VES', label: 'JZ_USD ➔ VES' },
-          { key: 'JZ_COP_VES', orig: 'JZ_COP', dest: 'VES', label: 'JZ_COP ➔ VES' },
           { key: 'PYP_VES', orig: 'PYP', dest: 'VES', label: 'PayPal ➔ VES' },
           { key: 'ESP_VES', orig: 'ESP', dest: 'VES', label: 'Europa (EUR) ➔ VES' },
           { key: 'BIZ_VES', orig: 'BIZ', dest: 'VES', label: 'Bizum ➔ VES' },
@@ -343,11 +338,7 @@
             'USD_VES',
             'PEN_VES',
             'VES_PEN',
-            'USD_PEN',
-            'ZX_PEN_VES',
-            'JZ_PEN_VES',
-            'JZ_USD_VES',
-            'JZ_COP_VES'
+            'USD_PEN'
           ];
           return (this.paresJZ || []).filter(p => autoKeys.includes(p.key));
         },
@@ -473,11 +464,6 @@
             case 'USD_COP': val = USD ? (1 / USD) * COP * f('USD', 'COP') : 0; break;
             case 'USD_PEN': val = USD ? (1 / USD) * PEN * f('USD', 'PEN') : 0; break;
 
-            case 'ZX_PEN_VES': val = rawPEN_VES * f('ZX_PEN', 'VES'); break;
-            case 'JZ_PEN_VES': val = rawPEN_VES * f('JZ_PEN', 'VES'); break;
-            case 'JZ_USD_VES': val = rawUSD_VES * f('JZ_USD', 'VES'); break;
-            case 'JZ_COP_VES': val = rawCOP_VES * f('JZ_COP', 'VES'); break;
-
             default: val = 0;
           }
 
@@ -560,7 +546,7 @@
               if (this.factoresMatriz[orig]) {
                 Object.keys(this.factoresMatriz[orig]).forEach(dest => {
                   const key = `${orig}_${dest}`;
-                  if (!paresDict[key]) {
+                  if (!paresDict[key] && !key.startsWith('ZX_') && !key.startsWith('JZ_')) {
                     const labelOrig = this.formatearNombreMoneda(orig);
                     const labelDest = this.formatearNombreMoneda(dest);
                     paresDict[key] = { key, orig, dest, label: `${labelOrig} ➔ ${labelDest}` };
