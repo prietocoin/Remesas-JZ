@@ -357,7 +357,7 @@
           const ARS = parseFloat(t.ARS || 0);
           const CLP = parseFloat(t.CLP || 0);
           const ESP = parseFloat(t.ESP || 0);
-          const PYP = parseFloat(t.PYP || 0);
+          if (key === 'PYP_VES') val = (parseFloat(t.PYP || 0)) * f('PYP', 'VES');
 
           const f = (orig, dest) => this.obtenerFactorPar(orig, dest);
 
@@ -369,7 +369,7 @@
           const key = String(parKey).toUpperCase();
 
           switch (key) {
-            case 'PYP_VES': val = PYP * f('PYP', 'VES'); break;
+            case 'PYP_VES': val = (parseFloat(t.PYP || 0)) * f('PYP', 'VES'); break;
             case 'ESP_VES': val = ESP * f('ESP', 'VES'); break;
             case 'BIZ_VES': val = ESP * f('BIZ', 'VES'); break;
 
@@ -413,7 +413,7 @@
             }
           } catch (e) {
             alert('❌ Error de conexión o tiempo agotado.');
-          } font-bold {
+          } finally {
             this.cargandoBinance = false;
           }
         },
