@@ -115,13 +115,13 @@
             <span class="text-xs font-extrabold bg-emerald-100 text-emerald-800 px-3.5 py-1.5 rounded-full border border-emerald-300" x-text="'Lote: ' + idTasaActiva"></span>
           </div>
 
-          <p class="text-xs text-gray-500">Tasas oficiales publicadas y activas actualmente en el sistema:</p>
+          <p class="text-xs text-gray-500 font-semibold">Tasas oficiales publicadas y activas actualmente en el sistema:</p>
 
-          <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
-            <template x-for="(valor, moneda) in tasasActivas" :key="moneda">
-              <div class="bg-gray-50 border border-gray-200 p-3 rounded-lg shadow-sm">
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <template x-for="moneda in ['USD', 'PEN', 'VES']" :key="moneda">
+              <div class="bg-gray-50 border border-gray-200 p-3.5 rounded-lg shadow-sm">
                 <span class="text-xs text-indigo-600 font-bold block mb-1" x-text="formatearNombreMoneda(moneda)"></span>
-                <span class="text-lg font-bold text-gray-800" x-text="Number(valor).toLocaleString('es-ES', { minimumFractionDigits: 2 })"></span>
+                <span class="text-xl font-bold text-gray-800" x-text="Number(tasasActivas[moneda] || 0).toLocaleString('es-ES', { minimumFractionDigits: 2 })"></span>
               </div>
             </template>
           </div>
@@ -129,48 +129,50 @@
 
       </div>
 
-      <!-- MENÚ 2: BORRADOR CAPTURADO (PASO PREVIO) -->
+      <!-- MENÚ 2: BORRADOR CAPTURADO (PASO PREVIO - MANUAL) -->
       <div x-show="tablaActiva === 'borrador_tasas'" x-cloak class="max-w-6xl mx-auto space-y-6">
         
-        <div class="flex justify-between items-center bg-white p-4 rounded-lg shadow border border-gray-200">
-          <div>
-            <h2 class="text-base font-bold text-gray-800">Borrador Capturado (Paso Previo)</h2>
-            <p class="text-xs text-gray-500">Edición manual e importación previa a la publicación oficial</p>
-          </div>
-          <div class="flex gap-2">
-            <button @click="conectarBinance()" :disabled="cargandoBinance" class="bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs px-4 py-2 rounded-lg shadow transition flex items-center gap-1.5">
-              <span x-show="!cargandoBinance">⚡ Conectar Binance API</span>
-              <span x-show="cargandoBinance" class="animate-spin">⌛ Obteniendo tasas...</span>
-            </button>
-            <button @click="cargarBorrador(false)" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs px-4 py-2 rounded-lg shadow transition">
-              🔄 Traer Borrador n8n
-            </button>
-          </div>
-        </div>
-
         <div class="bg-white border border-gray-200 rounded-lg p-6 space-y-5 shadow">
+          <div class="flex justify-between items-center border-b border-gray-100 pb-3">
+            <div>
+              <h2 class="text-base font-bold uppercase tracking-wider text-amber-600">Borrador Capturado (Paso Previo)</h2>
+              <p class="text-xs text-gray-500">Edición manual de tasas previa a la publicación oficial</p>
+            </div>
+            <button @click="cargarBorrador(false)" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs px-3.5 py-1.5 rounded-lg shadow transition">
+              🔄 Recargar Borrador
+            </button>
+          </div>
+
+          <!-- Campo 1: Correo Zelle -->
           <div class="bg-amber-50/60 border border-amber-200 p-3 rounded-lg space-y-1">
             <label class="text-xs text-amber-900 font-bold uppercase tracking-wider block">📧 Correo Zelle del Lote</label>
-            <input type="text" x-model="borradorCorreoZelle" placeholder="ej. GM Sports 21 LLC" class="w-full bg-white text-gray-900 font-bold text-xs sm:text-sm p-2 rounded border border-amber-300 outline-none focus:ring-1 focus:ring-amber-500">
+            <input type="text" x-model="borradorCorreoZelle" placeholder="ej. GM Sports 21 LLC" class="w-full bg-white text-gray-900 font-bold text-xs sm:text-sm p-2.5 rounded border border-amber-300 outline-none focus:ring-1 focus:ring-amber-500">
           </div>
 
-          <div x-show="Object.keys(borradorTasas).length > 0" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
-            <template x-for="(valor, moneda) in borradorTasas" :key="moneda">
-              <div class="bg-amber-50/50 border border-amber-200 p-3 rounded-lg">
-                <span class="text-xs text-amber-800 font-bold block mb-1" x-text="formatearNombreMoneda(moneda)"></span>
-                <input type="number" step="any" x-model.number="borradorTasas[moneda]" class="w-full bg-white text-gray-900 font-bold text-sm p-1.5 rounded border border-amber-300 outline-none focus:ring-1 focus:ring-amber-500">
-              </div>
-            </template>
+          <!-- Campos Únicos: USD, PEN, VES -->
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <!-- USD -->
+            <div class="bg-amber-50/50 border border-amber-200 p-3.5 rounded-lg">
+              <label class="text-xs text-amber-800 font-bold block mb-1 uppercase tracking-wider">USD</label>
+              <input type="number" step="any" x-model.number="borradorTasas.USD" class="w-full bg-white text-gray-900 font-bold text-base p-2 rounded border border-amber-300 outline-none focus:ring-1 focus:ring-amber-500">
+            </div>
+
+            <!-- PEN -->
+            <div class="bg-amber-50/50 border border-amber-200 p-3.5 rounded-lg">
+              <label class="text-xs text-amber-800 font-bold block mb-1 uppercase tracking-wider">PEN</label>
+              <input type="number" step="any" x-model.number="borradorTasas.PEN" class="w-full bg-white text-gray-900 font-bold text-base p-2 rounded border border-amber-300 outline-none focus:ring-1 focus:ring-amber-500">
+            </div>
+
+            <!-- VES -->
+            <div class="bg-amber-50/50 border border-amber-200 p-3.5 rounded-lg">
+              <label class="text-xs text-amber-800 font-bold block mb-1 uppercase tracking-wider">VES</label>
+              <input type="number" step="any" x-model.number="borradorTasas.VES" class="w-full bg-white text-gray-900 font-bold text-base p-2 rounded border border-amber-300 outline-none focus:ring-1 focus:ring-amber-500">
+            </div>
           </div>
 
-          <div x-show="Object.keys(borradorTasas).length === 0" class="p-8 text-center text-xs text-gray-400 italic bg-gray-50 rounded-lg border border-dashed border-gray-200">
-            Sin borrador pendiente. Conecta Binance API o presiona <strong class="text-indigo-600 font-semibold">"Traer Borrador n8n"</strong>.
-          </div>
-
+          <!-- Botón Publicar -->
           <button @click="publicarTasa()" 
-                  :disabled="Object.keys(borradorTasas).length === 0"
-                  :class="Object.keys(borradorTasas).length > 0 ? 'bg-emerald-600 hover:bg-emerald-700 text-white cursor-pointer' : 'bg-gray-200 text-gray-400 cursor-not-allowed'"
-                  class="w-full font-bold text-sm py-3 rounded-lg transition shadow">
+                  class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm py-3.5 rounded-lg transition shadow cursor-pointer">
             🚀 Publicar Tasa Oficial a Producción
           </button>
         </div>
@@ -259,12 +261,11 @@
 
         tasasActivas: {}, idTasaActiva: 'T000',
         correoZelleActivo: 'GM Sports 21 LLC',
-        borradorTasas: {},
+        borradorTasas: { USD: 1, PEN: 3.36, VES: 956.5 },
         borradorCorreoZelle: 'GM Sports 21 LLC',
         factoresMatriz: {},
         modalNuevoPar: false,
         nuevoParForm: { orig: '', dest: '', comision: 10 },
-        cargandoBinance: false,
 
         paresBaseJZ: [
           { key: 'USD_VES', orig: 'USD', dest: 'VES', label: 'USD ➔ VES' },
@@ -404,25 +405,6 @@
           return resultadoTruncado ? resultadoTruncado.toLocaleString('es-ES') : '0';
         },
 
-        async conectarBinance() {
-          this.cargandoBinance = true;
-          try {
-            const res = await this.fetchConTimeout('/api/tasas/binance', { method: 'POST', timeout: 10000 });
-            const data = await res.json();
-            if (data && data.success) {
-              this.borradorTasas = data.rates || {};
-              this.borradorCorreoZelle = data.correo_zelle || 'GM Sports 21 LLC';
-              alert('⚡ Tasas obtenidas directamente desde Binance P2P.');
-            } else {
-              alert('⚠️ Error Binance: ' + (data.error || data.message || 'No se pudo conectar con P2P.'));
-            }
-          } catch (e) {
-            alert('❌ Error de conexión o tiempo agotado.');
-          } finally {
-            this.cargandoBinance = false;
-          }
-        },
-
         async cargarTasasActivas() {
           try {
             const res = await this.fetchConTimeout('/api/tasas/ultimas');
@@ -440,23 +422,23 @@
             const res = await this.fetchConTimeout('/api/tasas/fetch-hoo');
             if (res.ok) {
               const data = await res.json();
-              if (data && data.success) {
-                this.borradorTasas = data.rates || {};
+              if (data && data.success && data.rates) {
+                this.borradorTasas = {
+                  USD: data.rates.USD !== undefined ? data.rates.USD : 1,
+                  PEN: data.rates.PEN !== undefined ? data.rates.PEN : (this.tasasActivas.PEN || 3.36),
+                  VES: data.rates.VES !== undefined ? data.rates.VES : (this.tasasActivas.VES || 956.5)
+                };
                 this.borradorCorreoZelle = data.correo_zelle || this.correoZelleActivo || 'GM Sports 21 LLC';
-                if (!silencioso) alert('✅ Borrador cargado en pantalla.');
+                if (!silencioso) alert('✅ Borrador cargado.');
                 return;
               }
             }
-            this.borradorTasas = {};
-            if (!silencioso) alert('Sin borrador pendiente en la base de datos.');
           } catch (e) { 
-            this.borradorTasas = {};
             if (!silencioso) alert('Error al consultar borrador.'); 
           }
         },
 
         async publicarTasa() {
-          if (Object.keys(this.borradorTasas).length === 0) return alert('No hay borrador que publicar.');
           if (!confirm('¿Deseas publicar este lote como oficial?')) return;
           try {
             const res = await this.fetchConTimeout('/api/tasas/publicar', {
@@ -469,8 +451,7 @@
             });
             const data = await res.json();
             if (data && data.success) {
-              alert(data.message || '🚀 Lote publicado con éxito.');
-              this.borradorTasas = {};
+              alert(data.message || '🚀 Lote publicado con éxito a producción.');
               await this.cargarTasasActivas();
             } else {
               alert('❌ Error al publicar: ' + (data.error || data.message || 'Error desconocido.'));
