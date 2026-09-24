@@ -173,7 +173,7 @@
             </div>
           </div>
 
-          <!-- Sección: PARES DIVIDIDA EN TRES SUBSECCIONES -->
+          <!-- Sección: PARES DIVIDIDA EN SUBSECCIONES -->
           <div class="space-y-4 pt-3 border-t border-amber-200/60">
             <h3 class="text-sm font-extrabold text-amber-900 uppercase tracking-wider">Pares</h3>
             
@@ -194,14 +194,14 @@
               </div>
             </div>
 
-            <!-- 2. Pares Inversos (Lógica Inversa) -->
+            <!-- 2. Manuales -->
             <div class="space-y-2 pt-3 border-t border-dashed border-amber-200/50">
               <h4 class="text-xs font-bold text-amber-800 uppercase tracking-wider flex items-center gap-1.5">
-                <span>🔄 Pares Inversos (Lógica Inversa)</span>
-                <span class="text-[10px] text-amber-600 font-normal normal-case">(Conversiones de retorno o cálculo inverso)</span>
+                <span>✏️ Manuales</span>
+                <span class="text-[10px] text-amber-600 font-normal normal-case">(Pares especiales o personalizados)</span>
               </h4>
               <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
-                <template x-for="p in paresInversos" :key="p.key">
+                <template x-for="p in paresManuales" :key="p.key">
                   <div class="bg-amber-50/50 border border-amber-200 p-2.5 rounded-lg flex flex-col justify-between">
                     <span class="text-[10px] text-amber-800 font-bold block mb-1 truncate" x-text="p.label"></span>
                     <input type="number" step="any" x-model.number="borradorTasas[p.key]" 
@@ -211,14 +211,14 @@
               </div>
             </div>
 
-            <!-- 3. Manuales -->
+            <!-- 3. INVERSA (Última sección) -->
             <div class="space-y-2 pt-3 border-t border-dashed border-amber-200/50">
               <h4 class="text-xs font-bold text-amber-800 uppercase tracking-wider flex items-center gap-1.5">
-                <span>✏️ Manuales</span>
-                <span class="text-[10px] text-amber-600 font-normal normal-case">(Pares especiales o personalizados)</span>
+                <span>🔄 Inversa</span>
+                <span class="text-[10px] text-amber-600 font-normal normal-case">(Conversiones con cálculo/lógica inversa)</span>
               </h4>
               <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
-                <template x-for="p in paresManuales" :key="p.key">
+                <template x-for="p in paresInversa" :key="p.key">
                   <div class="bg-amber-50/50 border border-amber-200 p-2.5 rounded-lg flex flex-col justify-between">
                     <span class="text-[10px] text-amber-800 font-bold block mb-1 truncate" x-text="p.label"></span>
                     <input type="number" step="any" x-model.number="borradorTasas[p.key]" 
@@ -335,18 +335,18 @@
           { key: 'USD_VES', orig: 'USD', dest: 'VES', label: 'USD ➔ VES' },
           { key: 'PEN_VES', orig: 'PEN', dest: 'VES', label: 'PEN ➔ VES' },
           { key: 'USD_PEN', orig: 'USD', dest: 'PEN', label: 'USD ➔ PEN' },
-          { key: 'VES_PEN', orig: 'VES', dest: 'PEN', label: 'VES ➔ PEN' },
-          { key: 'VES_COP', orig: 'VES', dest: 'COP', label: 'VES ➔ COP' },
-          { key: 'COP_PEN', orig: 'COP', dest: 'PEN', label: 'COP ➔ PEN' },
           { key: 'PYP_VES', orig: 'PYP', dest: 'VES', label: 'PayPal ➔ VES' },
           { key: 'ESP_VES', orig: 'ESP', dest: 'VES', label: 'Europa (EUR) ➔ VES' },
           { key: 'BIZ_VES', orig: 'BIZ', dest: 'VES', label: 'Bizum ➔ VES' },
           { key: 'PEN_COP', orig: 'PEN', dest: 'COP', label: 'PEN ➔ COP' },
-          { key: 'COP_VES', orig: 'COP', dest: 'VES', label: 'COP ➔ VES' },
+          { key: 'VES_PEN', orig: 'VES', dest: 'PEN', label: 'VES ➔ PEN' },
+          { key: 'VES_COP', orig: 'VES', dest: 'COP', label: 'VES ➔ COP' },
           { key: 'MXN_VES', orig: 'MXN', dest: 'VES', label: 'MXN ➔ VES' },
           { key: 'ARS_VES', orig: 'ARS', dest: 'VES', label: 'ARS ➔ VES' },
           { key: 'PEN_CLP', orig: 'PEN', dest: 'CLP', label: 'PEN ➔ CLP' },
-          { key: 'USD_COP', orig: 'USD', dest: 'COP', label: 'USD ➔ COP' }
+          { key: 'USD_COP', orig: 'USD', dest: 'COP', label: 'USD ➔ COP' },
+          { key: 'COP_PEN', orig: 'COP', dest: 'PEN', label: 'COP ➔ PEN' },
+          { key: 'COP_VES', orig: 'COP', dest: 'VES', label: 'COP ➔ VES' }
         ],
         paresJZ: [],
 
@@ -355,15 +355,15 @@
           return (this.paresJZ || []).filter(p => autoKeys.includes(p.key));
         },
 
-        get paresInversos() {
-          const inverseKeys = ['VES_PEN', 'VES_COP', 'COP_PEN'];
-          return (this.paresJZ || []).filter(p => inverseKeys.includes(p.key));
+        get paresInversa() {
+          const inversaKeys = ['COP_VES'];
+          return (this.paresJZ || []).filter(p => inversaKeys.includes(p.key));
         },
 
         get paresManuales() {
           const autoKeys = ['USD_VES', 'PEN_VES', 'USD_PEN'];
-          const inverseKeys = ['VES_PEN', 'VES_COP', 'COP_PEN'];
-          return (this.paresJZ || []).filter(p => !autoKeys.includes(p.key) && !inverseKeys.includes(p.key));
+          const inversaKeys = ['COP_VES'];
+          return (this.paresJZ || []).filter(p => !autoKeys.includes(p.key) && !inversaKeys.includes(p.key));
         },
 
         actualizarParesAutomaticosBorrador() {
@@ -466,7 +466,7 @@
             return '0';
           }
 
-          // Lógica para pares inversos y manuales
+          // Lógica para pares manuales e inversa
           const COP = parseFloat(t.COP || 0);
           const VES = parseFloat(t.VES || 0);
           const PEN = parseFloat(t.PEN || 0);
