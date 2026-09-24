@@ -149,24 +149,41 @@
             <input type="text" x-model="borradorCorreoZelle" placeholder="ej. GM Sports 21 LLC" class="w-full bg-white text-gray-900 font-bold text-xs sm:text-sm p-2.5 rounded border border-amber-300 outline-none focus:ring-1 focus:ring-amber-500">
           </div>
 
-          <!-- Campos Únicos: USD, PEN, VES -->
-          <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <!-- USD -->
-            <div class="bg-amber-50/50 border border-amber-200 p-3.5 rounded-lg">
-              <label class="text-xs text-amber-800 font-bold block mb-1 uppercase tracking-wider">USD</label>
-              <input type="number" step="any" x-model.number="borradorTasas.USD" class="w-full bg-white text-gray-900 font-bold text-base p-2 rounded border border-amber-300 outline-none focus:ring-1 focus:ring-amber-500">
-            </div>
+          <!-- Monedas Base -->
+          <div class="space-y-2">
+            <h3 class="text-xs font-bold text-amber-800 uppercase tracking-wider">Monedas Base</h3>
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <!-- USD -->
+              <div class="bg-amber-50/50 border border-amber-200 p-3.5 rounded-lg">
+                <label class="text-xs text-amber-800 font-bold block mb-1 uppercase tracking-wider">USD</label>
+                <input type="number" step="any" x-model.number="borradorTasas.USD" class="w-full bg-white text-gray-900 font-bold text-base p-2 rounded border border-amber-300 outline-none focus:ring-1 focus:ring-amber-500">
+              </div>
 
-            <!-- PEN -->
-            <div class="bg-amber-50/50 border border-amber-200 p-3.5 rounded-lg">
-              <label class="text-xs text-amber-800 font-bold block mb-1 uppercase tracking-wider">PEN</label>
-              <input type="number" step="any" x-model.number="borradorTasas.PEN" class="w-full bg-white text-gray-900 font-bold text-base p-2 rounded border border-amber-300 outline-none focus:ring-1 focus:ring-amber-500">
-            </div>
+              <!-- PEN -->
+              <div class="bg-amber-50/50 border border-amber-200 p-3.5 rounded-lg">
+                <label class="text-xs text-amber-800 font-bold block mb-1 uppercase tracking-wider">PEN</label>
+                <input type="number" step="any" x-model.number="borradorTasas.PEN" class="w-full bg-white text-gray-900 font-bold text-base p-2 rounded border border-amber-300 outline-none focus:ring-1 focus:ring-amber-500">
+              </div>
 
-            <!-- VES -->
-            <div class="bg-amber-50/50 border border-amber-200 p-3.5 rounded-lg">
-              <label class="text-xs text-amber-800 font-bold block mb-1 uppercase tracking-wider">VES</label>
-              <input type="number" step="any" x-model.number="borradorTasas.VES" class="w-full bg-white text-gray-900 font-bold text-base p-2 rounded border border-amber-300 outline-none focus:ring-1 focus:ring-amber-500">
+              <!-- VES -->
+              <div class="bg-amber-50/50 border border-amber-200 p-3.5 rounded-lg">
+                <label class="text-xs text-amber-800 font-bold block mb-1 uppercase tracking-wider">VES</label>
+                <input type="number" step="any" x-model.number="borradorTasas.VES" class="w-full bg-white text-gray-900 font-bold text-base p-2 rounded border border-amber-300 outline-none focus:ring-1 focus:ring-amber-500">
+              </div>
+            </div>
+          </div>
+
+          <!-- Subtítulo: Pares -->
+          <div class="space-y-2 pt-3 border-t border-amber-200/60">
+            <h3 class="text-xs font-bold text-amber-800 uppercase tracking-wider">Pares</h3>
+            <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
+              <template x-for="p in paresJZ" :key="p.key">
+                <div class="bg-amber-50/50 border border-amber-200 p-2.5 rounded-lg flex flex-col justify-between">
+                  <span class="text-[10px] text-amber-800 font-bold block mb-1 truncate" x-text="p.label"></span>
+                  <input type="number" step="any" x-model.number="borradorTasas[p.key]" 
+                         class="w-full bg-white text-gray-900 font-bold text-xs p-1.5 rounded border border-amber-300 outline-none focus:ring-1 focus:ring-amber-500">
+                </div>
+              </template>
             </div>
           </div>
 
@@ -261,7 +278,13 @@
 
         tasasActivas: {}, idTasaActiva: 'T000',
         correoZelleActivo: 'GM Sports 21 LLC',
-        borradorTasas: { USD: 1, PEN: 3.36, VES: 956.5 },
+        borradorTasas: {
+          USD: 1, PEN: 3.36, VES: 956.5,
+          USD_VES: 855, PEN_VES: 263, PEN_COP: 842, COP_VES: 3.61, MXN_VES: 46.97,
+          PYP_VES: 732, ESP_VES: 0.8, BIZ_VES: 0.78, ARS_VES: 0.53, VES_COP: 3.05,
+          VES_PEN: 299, PEN_CLP: 247, USD_COP: 2717, USD_PEN: 3.03, COP_PEN: 1041,
+          ZX_PEN_VES: 237, JZ_PEN_VES: 237, JZ_USD_VES: 769, JZ_COP_VES: 3.25
+        },
         borradorCorreoZelle: 'GM Sports 21 LLC',
         factoresMatriz: {},
         modalNuevoPar: false,
@@ -423,11 +446,7 @@
             if (res.ok) {
               const data = await res.json();
               if (data && data.success && data.rates) {
-                this.borradorTasas = {
-                  USD: data.rates.USD !== undefined ? data.rates.USD : 1,
-                  PEN: data.rates.PEN !== undefined ? data.rates.PEN : (this.tasasActivas.PEN || 3.36),
-                  VES: data.rates.VES !== undefined ? data.rates.VES : (this.tasasActivas.VES || 956.5)
-                };
+                this.borradorTasas = { ...this.borradorTasas, ...data.rates };
                 this.borradorCorreoZelle = data.correo_zelle || this.correoZelleActivo || 'GM Sports 21 LLC';
                 if (!silencioso) alert('✅ Borrador cargado.');
                 return;
