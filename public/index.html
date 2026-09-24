@@ -50,7 +50,7 @@
 
   <div x-show="sidebarAbierto" x-transition.opacity class="fixed inset-0 bg-black/60 z-40 md:hidden" @click="sidebarAbierto = false" x-cloak></div>
 
-  <!-- Sidebar -->
+  <!-- Sidebar / Menú Lateral -->
   <aside :class="sidebarAbierto ? 'translate-x-0' : '-translate-x-full'" class="fixed md:static inset-y-0 left-0 z-50 w-64 bg-zorrilla-dark text-white flex flex-col transition-transform duration-300 md:translate-x-0 shadow-2xl md:shadow-none">
     <div class="p-4 flex items-center gap-3 border-b border-white/10 shrink-0">
       <div class="bg-white/10 p-1.5 rounded-xl">
@@ -64,10 +64,16 @@
     <nav class="flex-1 overflow-y-auto p-3 space-y-2">
       <p class="px-3 text-[10px] font-bold text-indigo-300 uppercase tracking-wider mb-2 mt-2">Principal</p>
       
-      <!-- 1. Tasas Mercado -->
-      <button @click="cambiarTabla('tasas_mercado')" :class="tablaActiva === 'tasas_mercado' ? 'bg-indigo-600 text-white shadow' : 'text-blue-200 hover:bg-white/10 hover:text-white'" class="w-full flex items-center gap-3 p-2.5 rounded-lg font-semibold text-sm transition-all">
+      <!-- Menú 1: Borrador Capturado -->
+      <button @click="cambiarTabla('borrador_tasas')" :class="tablaActiva === 'borrador_tasas' ? 'bg-indigo-600 text-white shadow' : 'text-blue-200 hover:bg-white/10 hover:text-white'" class="w-full flex items-center gap-3 p-2.5 rounded-lg font-semibold text-sm transition-all">
         <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z" /></svg>
-        Tasas Mercado
+        Borrador Capturado
+      </button>
+
+      <!-- Menú 2: Comisión por Par (%) -->
+      <button @click="cambiarTabla('comisiones_par')" :class="tablaActiva === 'comisiones_par' ? 'bg-indigo-600 text-white shadow' : 'text-blue-200 hover:bg-white/10 hover:text-white'" class="w-full flex items-center gap-3 p-2.5 rounded-lg font-semibold text-sm transition-all">
+        <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 6v12m-3-6h6M4 6h16M4 12h16M4 18h16" /></svg>
+        Comisión por Par (%)
       </button>
     </nav>
   </aside>
@@ -76,30 +82,28 @@
   <div class="flex-1 flex flex-col h-full overflow-hidden relative w-full">
     
     <header class="bg-zorrilla text-white p-3 sm:p-4 shadow-md z-20 shrink-0">
-      <div class="max-w-6xl mx-auto flex flex-col gap-3">
-        <div class="flex justify-between items-center">
-          <div class="flex items-center gap-3">
-            <button @click="sidebarAbierto = true" class="md:hidden p-1.5 bg-zorrilla-dark rounded-md hover:bg-indigo-600 focus:outline-none transition-colors">
-              <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
-            </button>
-            <div>
-              <h1 class="text-base sm:text-xl font-bold tracking-wide leading-tight capitalize" x-text="tablaActiva === 'registros' ? 'Visor de Remesas' : (tablaActiva === 'tasas_mercado' ? 'Gestión de Tasas Mercado' : (tablaActiva === 'imagenes_john' ? 'Monitor RAW WhatsApp (JOHN)' : (tablaActiva === 'lectura_ia' ? 'Lectura & Extracción IA' : (tablaActiva === 'directorio' ? 'Directorio (Socios)' : tablaActiva.replace('_', ' ')))))"></h1>
-            </div>
+      <div class="max-w-6xl mx-auto flex justify-between items-center">
+        <div class="flex items-center gap-3">
+          <button @click="sidebarAbierto = true" class="md:hidden p-1.5 bg-zorrilla-dark rounded-md hover:bg-indigo-600 focus:outline-none transition-colors">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
+          </button>
+          <div>
+            <h1 class="text-base sm:text-xl font-bold tracking-wide leading-tight" x-text="tablaActiva === 'borrador_tasas' ? 'Borrador Capturado de Tasas' : 'Gestión de Comisiones por Par'"></h1>
           </div>
-          <span class="text-xs bg-zorrilla-dark px-2.5 py-1 rounded-full text-blue-200 border border-zorrilla font-medium shrink-0" x-text="tablaActiva === 'registros' ? remesas.length + ' regs' : (tablaActiva === 'tasas_mercado' ? 'Motor Activo' : (tablaActiva === 'imagenes_john' ? datosImagenesJohn.length + ' imágenes' : (tablaActiva === 'lectura_ia' ? lecturasIAFiltradas.length + ' cruzados' : (tablaActiva === 'directorio' ? datosDirectorio.length + ' socios' : datosGenericos.length + ' regs'))))"></span>
         </div>
+        <span class="text-xs bg-zorrilla-dark px-2.5 py-1 rounded-full text-blue-200 border border-zorrilla font-medium shrink-0">Motor Activo</span>
       </div>
     </header>
 
     <main class="flex-1 overflow-x-hidden overflow-y-auto bg-gray-100 p-3 sm:p-4 pb-12 w-full">
 
-      <!-- VISTA ESPECIALIZADA: TASAS MERCADO & COMISIONES (%) -->
-      <div x-show="tablaActiva === 'tasas_mercado'" x-cloak class="max-w-6xl mx-auto space-y-6">
+      <!-- MENÚ 1: BORRADOR CAPTURADO -->
+      <div x-show="tablaActiva === 'borrador_tasas'" x-cloak class="max-w-6xl mx-auto space-y-6">
         
         <div class="flex justify-between items-center bg-white p-4 rounded-lg shadow border border-gray-200">
           <div>
             <h2 class="text-base font-bold text-gray-800">Motor Cambiario de Remesas</h2>
-            <p class="text-xs text-gray-500">Administración de Lotes Oficiales y Comisiones por Divisa (JOHN)</p>
+            <p class="text-xs text-gray-500">Administración de Lotes Oficiales y Captura de Tasas (JOHN)</p>
           </div>
           <div class="flex gap-2">
             <button @click="conectarBinance()" :disabled="cargandoBinance" class="bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs px-4 py-2 rounded-lg shadow transition flex items-center gap-1.5">
@@ -113,6 +117,7 @@
         </div>
 
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <!-- Lote Activo Producción -->
           <div class="bg-white border border-gray-200 rounded-lg p-5 space-y-4 shadow">
             <div class="flex justify-between items-center border-b border-gray-100 pb-3">
               <div>
@@ -131,6 +136,7 @@
             </div>
           </div>
 
+          <!-- Borrador Capturado -->
           <div class="bg-white border border-gray-200 rounded-lg p-5 space-y-4 shadow">
             <div class="flex justify-between items-center border-b border-gray-100 pb-3">
               <h3 class="text-xs font-bold text-amber-600 uppercase tracking-wider">Borrador Capturado (Paso Previo)</h3>
@@ -164,6 +170,11 @@
           </div>
         </div>
 
+      </div>
+
+      <!-- MENÚ 2: COMISIÓN POR PAR (%) -->
+      <div x-show="tablaActiva === 'comisiones_par'" x-cloak class="max-w-6xl mx-auto space-y-6">
+        
         <div class="bg-white border border-gray-200 rounded-lg p-5 space-y-4 shadow">
           <div class="flex justify-between items-center border-b border-gray-100 pb-3">
             <div>
@@ -238,7 +249,7 @@
   <script>
     function dashboardApp() {
       return {
-        tablaActiva: 'tasas_mercado',
+        tablaActiva: 'borrador_tasas',
         sidebarAbierto: false,
 
         tasasActivas: {}, idTasaActiva: 'T000',
@@ -297,18 +308,16 @@
           }, 800);
 
           this.sincronizarParesConBD();
-          this.cambiarTabla('tasas_mercado');
+          this.cambiarTabla('borrador_tasas');
         },
 
         async cambiarTabla(nombre) {
           this.tablaActiva = nombre;
           this.sidebarAbierto = false;
 
-          if (nombre === 'tasas_mercado') {
-            await this.cargarTasasActivas();
-            await this.cargarFactores();
-            await this.cargarBorrador(true);
-          }
+          await this.cargarTasasActivas();
+          await this.cargarFactores();
+          await this.cargarBorrador(true);
         },
 
         formatearNombreMoneda(m) {
@@ -404,7 +413,7 @@
             }
           } catch (e) {
             alert('❌ Error de conexión o tiempo agotado.');
-          } finally {
+          } font-bold {
             this.cargandoBinance = false;
           }
         },
@@ -563,7 +572,7 @@
                   moneda_origen: orig,
                   factores: this.factoresMatriz[orig] || {}
                 })
-              })
+              });
             }
             alert('✅ Comisiones actualizadas correctamente.');
           } catch (e) {
