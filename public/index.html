@@ -132,7 +132,7 @@
           <div class="space-y-3 pt-4 border-t border-gray-100">
             <div class="flex justify-between items-center">
               <h3 class="text-xs font-extrabold text-indigo-900 uppercase tracking-wider">Vista Previa de Pares Oficiales (Valor en Verde)</h3>
-              <span class="text-[10px] text-gray-400 font-medium">Calculado con última tasa BD + comisión (6% defecto)</span>
+              <span class="text-[10px] text-gray-400 font-medium">Calculado con última tasa BD + porcentaje configurado</span>
             </div>
 
             <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
@@ -140,7 +140,7 @@
                 <div class="bg-indigo-50/40 border border-indigo-100 p-3 rounded-lg flex flex-col justify-between shadow-sm">
                   <span class="text-[11px] text-indigo-800 font-bold truncate mb-2" x-text="p.label"></span>
                   <div class="flex justify-between items-end">
-                    <span class="text-xs text-gray-400 font-semibold" x-text="obtenerComisionPar(p.orig, p.dest) + '%'"></span>
+                    <span class="text-xs text-gray-400 font-semibold" x-text="(esSumarComision(p.orig, p.dest) ? '+' : '-') + obtenerComisionPar(p.orig, p.dest) + '%'"></span>
                     <span class="text-sm font-mono font-extrabold text-emerald-800 bg-emerald-100 border border-emerald-300 px-2 py-0.5 rounded shadow-sm" 
                           x-text="calcularValorPar(p.key)"></span>
                   </div>
@@ -285,35 +285,49 @@
 
       </div>
 
-      <!-- MENÚ 3: PORCENTAJES (PORCENTAJES DE COMISIÓN POR PAR %) -->
+      <!-- MENÚ 3: PORCENTAJES CON CASILLA SUMAR / RESTAR (%) -->
       <div x-show="tablaActiva === 'comisiones_par'" x-cloak class="max-w-6xl mx-auto space-y-6">
         
         <div class="bg-white border border-gray-200 rounded-lg p-5 space-y-4 shadow">
           <div class="flex justify-between items-center border-b border-gray-100 pb-3">
             <div>
               <h3 class="text-xs font-bold text-indigo-900 uppercase tracking-wider">Porcentajes de Comisión por Par (%)</h3>
-              <p class="text-[10px] text-gray-400">Pares oficiales configurados para JOHN (Valor calculado en verde)</p>
+              <p class="text-[10px] text-gray-400">Configura la comisión y si deseas restar o sumar el porcentaje sobre el par</p>
             </div>
             <button @click="abrirModalNuevoPar()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs px-3 py-1.5 rounded-lg shadow transition flex items-center gap-1">
               <span>+ Agregar Par</span>
             </button>
           </div>
 
+          <!-- Grilla de Tarjetas con Casilla Tildable -->
           <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
             <template x-for="p in paresJZ" :key="p.key">
-              <div class="bg-indigo-50/40 border border-indigo-100 p-2.5 rounded-lg flex flex-col justify-between">
-                <div class="flex justify-between items-center mb-1.5 gap-1">
+              <div class="bg-indigo-50/40 border border-indigo-100 p-2.5 rounded-lg flex flex-col justify-between space-y-2 shadow-sm">
+                <!-- Encabezado Tarjeta -->
+                <div class="flex justify-between items-center mb-0.5 gap-1">
                   <span class="text-[10px] text-indigo-700 font-bold truncate" x-text="p.label"></span>
                   <span class="text-xs font-mono font-extrabold text-emerald-800 bg-emerald-100 border border-emerald-300 px-1.5 py-0.5 rounded shadow-sm shrink-0" 
                         x-text="calcularValorPar(p.key)"></span>
                 </div>
 
-                <div class="relative mt-1">
-                  <input type="number" step="0.1" min="0" max="100" 
-                         :value="obtenerComisionPar(p.orig, p.dest)" 
-                         @input="actualizarComisionPar(p.orig, p.dest, $event.target.value)"
-                         class="w-full bg-white text-emerald-700 font-bold text-xs p-1.5 pr-6 rounded border border-indigo-200 outline-none focus:ring-1 focus:ring-indigo-500">
-                  <span class="absolute right-2 top-1.5 text-xs text-gray-400 font-bold">%</span>
+                <!-- Input del Porcentaje + Casilla Sumar/Restar -->
+                <div class="flex items-center gap-1.5">
+                  <div class="relative flex-1">
+                    <input type="number" step="0.1" min="0" max="100" 
+                           :value="obtenerComisionPar(p.orig, p.dest)" 
+                           @input="actualizarComisionPar(p.orig, p.dest, $event.target.value, esSumarComision(p.orig, p.dest))"
+                           class="w-full bg-white text-emerald-700 font-bold text-xs p-1.5 pr-5 rounded border border-indigo-200 outline-none focus:ring-1 focus:ring-indigo-500">
+                    <span class="absolute right-1.5 top-1.5 text-xs text-gray-400 font-bold">%</span>
+                  </div>
+
+                  <!-- Casilla tildable para sumar en vez de restar -->
+                  <label class="flex items-center gap-1 cursor-pointer select-none bg-white border border-indigo-200 px-1.5 py-1.5 rounded shadow-2xs hover:bg-indigo-50" title="Marcar para SUMAR el porcentaje en vez de restar">
+                    <input type="checkbox" 
+                           :checked="esSumarComision(p.orig, p.dest)"
+                           @change="actualizarComisionPar(p.orig, p.dest, obtenerComisionPar(p.orig, p.dest), $event.target.checked)"
+                           class="rounded accent-indigo-600 w-3.5 h-3.5 cursor-pointer">
+                    <span class="text-[9px] font-extrabold" :class="esSumarComision(p.orig, p.dest) ? 'text-emerald-700' : 'text-gray-500'" x-text="esSumarComision(p.orig, p.dest) ? '+ Sumar' : '- Restar'"></span>
+                  </label>
                 </div>
               </div>
             </template>
@@ -506,8 +520,10 @@
         },
 
         obtenerFactorPar(orig, dest) {
-          const pct = this.obtenerComisionPar(orig, dest);
-          return 1 - (pct / 100);
+          if (this.factoresMatriz && this.factoresMatriz[orig] && this.factoresMatriz[orig][dest] !== undefined) {
+            return this.factoresMatriz[orig][dest];
+          }
+          return 0.94; // 6% resta por defecto (1 - 0.06)
         },
 
         calcularValorPar(parKey) {
@@ -530,7 +546,7 @@
             return '0';
           }
 
-          // Lógica para pares manuales, fija e inversa
+          // Lógica para pares manuales, fija e inversa con factor de la matriz
           const COP = parseFloat(t.COP || 0);
           const VES = parseFloat(t.VES || 0);
           const PEN = parseFloat(t.PEN || 0);
@@ -684,7 +700,7 @@
           if (!orig || !dest) return alert('Ingresa la moneda de origen y destino.');
           if (orig === dest) return alert('Las monedas deben ser distintas.');
 
-          this.actualizarComisionPar(orig, dest, comision);
+          this.actualizarComisionPar(orig, dest, comision, false);
 
           try {
             const res = await this.fetchConTimeout('/api/tasas/factores', {
@@ -709,12 +725,26 @@
             return 6;
           }
           const factor = this.factoresMatriz[orig][dest];
-          return Number(((1 - factor) * 100).toFixed(2));
+          if (factor > 1.0) {
+            return Number(((factor - 1) * 100).toFixed(2));
+          } else {
+            return Number(((1 - factor) * 100).toFixed(2));
+          }
         },
 
-        actualizarComisionPar(orig, dest, pctVal) {
+        esSumarComision(orig, dest) {
+          if (!this.factoresMatriz || !this.factoresMatriz[orig] || this.factoresMatriz[orig][dest] === undefined) {
+            return false;
+          }
+          return this.factoresMatriz[orig][dest] > 1.0;
+        },
+
+        actualizarComisionPar(orig, dest, pctVal, esSuma = false) {
           const pct = parseFloat(pctVal) || 0;
-          const factorCalculado = Number((1 - (pct / 100)).toFixed(4));
+          const factorCalculado = esSuma 
+            ? Number((1 + (pct / 100)).toFixed(4))
+            : Number((1 - (pct / 100)).toFixed(4));
+
           if (!this.factoresMatriz) this.factoresMatriz = {};
           if (!this.factoresMatriz[orig]) this.factoresMatriz[orig] = {};
           this.factoresMatriz[orig][dest] = factorCalculado;
@@ -735,9 +765,9 @@
                 })
               });
             }
-            alert('✅ Comisiones actualizadas correctamente.');
+            alert('✅ Porcentajes actualizados correctamente.');
           } catch (e) {
-            alert('Error al guardar comisiones.');
+            alert('Error al guardar porcentajes.');
           }
         }
       }
