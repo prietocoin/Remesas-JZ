@@ -132,7 +132,7 @@
           <div class="space-y-3 pt-4 border-t border-gray-100">
             <div class="flex justify-between items-center">
               <h3 class="text-xs font-extrabold text-indigo-900 uppercase tracking-wider">Vista Previa de Pares Oficiales (Valor en Verde)</h3>
-              <span class="text-[10px] text-gray-400 font-medium">Calculado con última tasa BD + porcentaje configurado</span>
+              <span class="text-[10px] text-gray-400 font-medium">Calculado: Monto Par publicado ± porcentaje configurado</span>
             </div>
 
             <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
@@ -523,60 +523,39 @@
           if (this.factoresMatriz && this.factoresMatriz[orig] && this.factoresMatriz[orig][dest] !== undefined) {
             return this.factoresMatriz[orig][dest];
           }
-          return 0.94; // 6% resta por defecto (1 - 0.06)
+          return 0.94; // 6% resta por defecto
         },
 
         calcularValorPar(parKey) {
           const t = this.tasasActivas || {};
           const key = String(parKey).toUpperCase();
 
-          // Fórmula para pares automáticos: monB / monA
+          const pairInfo = (this.paresJZ || []).find(p => p.key === key) || 
+                           (this.paresBaseJZ || []).find(p => p.key === key);
+
+          const orig = pairInfo ? pairInfo.orig : key.split('_')[0];
+          const dest = pairInfo ? pairInfo.dest : key.split('_')[1];
+
+          // 1. Obtener la Tasa Base Publicada del Par
+          let tasaBase = parseFloat(t[key] || 0);
+
+          // Si es un par automático y no tiene tasa almacenada directa, calculamos dest / orig
           const autoKeys = ['USD_VES', 'PEN_VES', 'USD_PEN', 'USD_COP'];
-          if (autoKeys.includes(key)) {
-            const parts = key.split('_');
-            const orig = parts[0];
-            const dest = parts[1];
+          if (autoKeys.includes(key) && (!tasaBase || tasaBase <= 0)) {
             const valA = parseFloat(t[orig] || 0);
             const valB = parseFloat(t[dest] || 0);
             if (valA > 0) {
-              const res = valB / valA;
-              const trunc = this.truncarDinamico(res);
-              return trunc ? trunc.toLocaleString('es-ES') : '0';
+              tasaBase = valB / valA;
             }
-            return '0';
           }
 
-          // Lógica para pares manuales, fija e inversa con factor de la matriz
-          const COP = parseFloat(t.COP || 0);
-          const VES = parseFloat(t.VES || 0);
-          const PEN = parseFloat(t.PEN || 0);
-          const USD = parseFloat(t.USD || 0);
-          const MXN = parseFloat(t.MXN || 0);
-          const ARS = parseFloat(t.ARS || 0);
-          const CLP = parseFloat(t.CLP || 0);
-          const ESP = parseFloat(t.ESP || 0);
-          const PYP = parseFloat(t.PYP || 0);
+          if (!tasaBase || tasaBase <= 0) return '0';
 
-          const f = (orig, dest) => this.obtenerFactorPar(orig, dest);
+          // 2. Obtener el factor de comisión (+ o - %) de la matriz
+          const factor = this.obtenerFactorPar(orig, dest);
 
-          let val = 0;
-          switch (key) {
-            case 'PYP_VES': val = PYP * f('PYP', 'VES'); break;
-            case 'ESP_VES': val = ESP * f('ESP', 'VES'); break;
-            case 'BIZ_VES': val = ESP * f('BIZ', 'VES'); break;
-
-            case 'COP_VES': val = VES ? (COP / VES) / f('COP', 'VES') : 0; break;
-            case 'COP_PEN': val = PEN ? (COP / PEN) / f('COP', 'PEN') : 0; break;
-            case 'VES_PEN': val = PEN ? (VES / PEN) / f('VES', 'PEN') : 0; break;
-
-            case 'PEN_COP': val = PEN ? (1 / PEN) * COP * f('PEN', 'COP') : 0; break;
-            case 'MXN_VES': val = MXN ? (1 / MXN) * VES * f('MXN', 'VES') : 0; break;
-            case 'ARS_VES': val = ARS ? (1 / ARS) * VES * f('ARS', 'VES') : 0; break;
-            case 'VES_COP': val = VES ? (1 / VES) * COP * f('VES', 'COP') : 0; break;
-            case 'PEN_CLP': val = PEN ? (1 / PEN) * CLP * f('PEN', 'CLP') : 0; break;
-
-            default: val = 0;
-          }
+          // 3. Tasa calculada final = Tasa Base del Par * Factor (+% o -%)
+          const val = tasaBase * factor;
 
           const resultadoTruncado = this.truncarDinamico(val);
           return resultadoTruncado ? resultadoTruncado.toLocaleString('es-ES') : '0';
