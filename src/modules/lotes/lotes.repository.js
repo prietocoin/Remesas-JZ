@@ -105,6 +105,18 @@ class LotesRepository {
       client.release();
     }
   }
+
+  async guardarCalculadas(idTasa, correoZelle, valoresFinales) {
+    const query = `
+      INSERT INTO jz_tasas_calculadas (id_tasa, correo_zelle, valores_finales, actualizado_en)
+      VALUES ($1, $2, $3::jsonb, NOW());
+    `;
+    await pool.query(query, [
+      idTasa,
+      correoZelle,
+      JSON.stringify(valoresFinales)
+    ]);
+  }
 }
 
 module.exports = new LotesRepository();
