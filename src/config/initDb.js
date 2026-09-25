@@ -46,8 +46,17 @@ async function initTasasJZ() {
         moneda_base VARCHAR(10)
       );
 
+      CREATE TABLE IF NOT EXISTS jz_tasas_calculadas (
+        id SERIAL PRIMARY KEY,
+        id_tasa VARCHAR(20) NOT NULL,
+        correo_zelle VARCHAR(255) DEFAULT 'GM Sports 21 LLC',
+        valores_finales JSONB NOT NULL DEFAULT '{}'::jsonb,
+        actualizado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+
       CREATE INDEX IF NOT EXISTS idx_jz_mercado_tasas_id ON jz_mercado_tasas(id_tasa);
       CREATE INDEX IF NOT EXISTS idx_jz_notificaciones_id_tasa ON jz_notificaciones(id_tasa);
+      CREATE INDEX IF NOT EXISTS idx_jz_tasas_calculadas_id_tasa ON jz_tasas_calculadas(id_tasa);
     `);
 
     const checkFactores = await pool.query('SELECT COUNT(*) FROM jz_factores_matriz');
