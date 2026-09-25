@@ -47,6 +47,19 @@ class LotesController {
       res.status(500).json({ success: false, error: err.message });
     }
   }
+
+  async guardarCalculadas(req, res) {
+    try {
+      const { id_tasa, correo_zelle, valores_finales } = req.body;
+      if (!id_tasa || !valores_finales) {
+        return res.status(400).json({ success: false, error: 'Faltan parámetros requeridos (id_tasa o valores_finales).' });
+      }
+      await lotesService.guardarCalculadas(id_tasa, correo_zelle, valores_finales);
+      res.json({ success: true, message: 'Valores calculados guardados correctamente.' });
+    } catch (err) {
+      res.status(500).json({ success: false, error: err.message });
+    }
+  }
 }
 
 module.exports = new LotesController();
