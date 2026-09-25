@@ -224,11 +224,11 @@
               </div>
             </div>
 
-            <!-- 2. Manuales / Personales -->
+            <!-- 2. Manuales -->
             <div class="space-y-2 pt-3 border-t border-dashed border-amber-200/50">
               <h4 class="text-xs font-bold text-amber-800 uppercase tracking-wider flex items-center gap-1.5">
-                <span>✏️ Manuales / Personales</span>
-                <span class="text-[10px] text-amber-600 font-normal normal-case">(Pares especiales, personales o personalizados)</span>
+                <span>✏️ Manuales</span>
+                <span class="text-[10px] text-amber-600 font-normal normal-case">(Pares especiales o personalizados)</span>
               </h4>
               <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
                 <template x-for="p in paresManuales" :key="p.key">
@@ -385,8 +385,7 @@
           USD: 1, PEN: 3.36, VES: 956.5, COP: 3095.67,
           USD_VES: 956.5, PEN_VES: 284.67, VES_PEN: 0.0035, USD_PEN: 3.36, USD_COP: 3095.67,
           PYP_VES: 732, ESP_VES: 0.8, BIZ_VES: 0.78, ARS_VES: 0.53, VES_COP: 3.05,
-          PEN_COP: 842, PEN_CLP: 247, COP_PEN: 1041, COP_VES: 3.61, MXN_VES: 46.97,
-          ZX_PEN_VES: 237, JZ_PEN_VES: 237, JZ_USD_VES: 769, JZ_COP_VES: 3.25
+          PEN_COP: 842, PEN_CLP: 247, COP_PEN: 1041, COP_VES: 3.61, MXN_VES: 46.97
         },
         borradorCorreoZelle: 'GM Sports 21 LLC',
         factoresMatriz: {},
@@ -409,11 +408,7 @@
           { key: 'ARS_VES', orig: 'ARS', dest: 'VES', label: 'ARS ➔ VES' },
           { key: 'PEN_CLP', orig: 'PEN', dest: 'CLP', label: 'PEN ➔ CLP' },
           { key: 'COP_PEN', orig: 'COP', dest: 'PEN', label: 'COP ➔ PEN' },
-          { key: 'COP_VES', orig: 'COP', dest: 'VES', label: 'COP ➔ VES' },
-          { key: 'ZX_PEN_VES', orig: 'ZX_PEN', dest: 'VES', label: 'ZX_PEN ➔ VES' },
-          { key: 'JZ_PEN_VES', orig: 'JZ_PEN', dest: 'VES', label: 'JZ_PEN ➔ VES' },
-          { key: 'JZ_USD_VES', orig: 'JZ_USD', dest: 'VES', label: 'JZ_USD ➔ VES' },
-          { key: 'JZ_COP_VES', orig: 'JZ_COP', dest: 'VES', label: 'JZ_COP ➔ VES' }
+          { key: 'COP_VES', orig: 'COP', dest: 'VES', label: 'COP ➔ VES' }
         ],
         paresJZ: [],
 
@@ -554,13 +549,6 @@
             }
           }
 
-          // Para pares ZX_ y JZ_, si no tienen tasa cargada propia, usan la tasa base equivalente
-          if (!tasaBase || tasaBase <= 0) {
-            if (key === 'ZX_PEN_VES' || key === 'JZ_PEN_VES') tasaBase = parseFloat(t['PEN_VES'] || 0);
-            else if (key === 'JZ_USD_VES') tasaBase = parseFloat(t['USD_VES'] || 0);
-            else if (key === 'JZ_COP_VES') tasaBase = parseFloat(t['COP_VES'] || 0);
-          }
-
           if (!tasaBase || tasaBase <= 0) return '0';
 
           // 2. Obtener el factor de comisión (+ o - %) de la matriz
@@ -666,7 +654,7 @@
               if (this.factoresMatriz[orig]) {
                 Object.keys(this.factoresMatriz[orig]).forEach(dest => {
                   const key = `${orig}_${dest}`;
-                  if (!paresDict[key]) {
+                  if (!paresDict[key] && !key.startsWith('ZX_') && !key.startsWith('JZ_')) {
                     const labelOrig = this.formatearNombreMoneda(orig);
                     const labelDest = this.formatearNombreMoneda(dest);
                     paresDict[key] = { key, orig, dest, label: `${labelOrig} ➔ ${labelDest}` };
