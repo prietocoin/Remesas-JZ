@@ -109,26 +109,33 @@
         <div class="bg-white border border-gray-200 rounded-lg p-6 space-y-5 shadow">
           <div class="flex justify-between items-center border-b border-gray-100 pb-4">
             <div>
-              <h2 class="text-sm font-bold text-emerald-600 uppercase tracking-wider">Lote Activo Producción (Últimas Tasas de la BD)</h2>
-              <p class="text-xs text-gray-500 font-mono mt-0.5" x-text="'Zelle: ' + correoZelleActivo"></p>
+              <h2 class="text-sm font-bold text-emerald-600 uppercase tracking-wider">Lote Activo Producción</h2>
+              <p class="text-xs text-gray-500 font-mono mt-0.5">Últimas tasas publicadas en la base de datos</p>
             </div>
             <span class="text-xs font-extrabold bg-emerald-100 text-emerald-800 px-3.5 py-1.5 rounded-full border border-emerald-300" x-text="'Lote: ' + idTasaActiva"></span>
           </div>
 
-          <!-- Monedas Base Activas -->
+          <!-- Monedas Base Activas y Card de Correo Zelle -->
           <div class="space-y-2">
-            <h3 class="text-xs font-bold text-indigo-900 uppercase tracking-wider">Monedas Base de Producción</h3>
-            <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
+            <h3 class="text-xs font-bold text-indigo-900 uppercase tracking-wider">Monedas Base y Datos de Producción</h3>
+            <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
+              <!-- Card Correo Zelle -->
+              <div class="bg-gray-50 border border-gray-200 p-3.5 rounded-lg shadow-sm flex flex-col justify-between">
+                <span class="text-xs text-indigo-600 font-bold block mb-1 uppercase tracking-wider">ZELLE ACTIVO</span>
+                <span class="text-sm sm:text-base font-bold text-gray-800 font-mono truncate" x-text="correoZelleActivo || 'GM Sports 21 LLC'" :title="correoZelleActivo"></span>
+              </div>
+
+              <!-- Monedas Base (USD, PEN, VES, COP) -->
               <template x-for="moneda in ['USD', 'PEN', 'VES', 'COP']" :key="moneda">
-                <div class="bg-gray-50 border border-gray-200 p-3.5 rounded-lg shadow-sm">
-                  <span class="text-xs text-indigo-600 font-bold block mb-1" x-text="formatearNombreMoneda(moneda)"></span>
+                <div class="bg-gray-50 border border-gray-200 p-3.5 rounded-lg shadow-sm flex flex-col justify-between">
+                  <span class="text-xs text-indigo-600 font-bold block mb-1 uppercase tracking-wider" x-text="formatearNombreMoneda(moneda)"></span>
                   <span class="text-xl font-bold text-gray-800" x-text="Number(tasasActivas[moneda] || 0).toLocaleString('es-ES', { minimumFractionDigits: 2 })"></span>
                 </div>
               </template>
             </div>
           </div>
 
-          <!-- Grilla Completa de Pares con Estilo Limpio (Mismo diseño que Monedas Base) -->
+          <!-- Grilla Completa de Pares Oficiales -->
           <div class="space-y-3 pt-4 border-t border-gray-100">
             <div class="flex justify-between items-center">
               <h3 class="text-xs font-extrabold text-indigo-900 uppercase tracking-wider">Vista Previa de Pares Oficiales</h3>
@@ -157,10 +164,6 @@
               <h2 class="text-base font-bold uppercase tracking-wider text-amber-600">Borrador Capturado (Paso Previo)</h2>
               <p class="text-xs text-gray-500">Edición manual de tasas previa a la publicación oficial</p>
             </div>
-            <!-- Botón Guardar Borrador -->
-            <button @click="guardarBorrador()" class="bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs px-4 py-2 rounded-lg shadow transition flex items-center gap-1.5">
-              <span>💾 Guardar Borrador</span>
-            </button>
           </div>
 
           <!-- Campo 1: Correo Zelle -->
@@ -486,7 +489,6 @@
 
           await this.cargarFactores();
           await this.cargarTasasActivas();
-          await this.cargarBorradorInicial();
           this.sincronizarParesConBD();
           this.cambiarTabla('tasas_mercado');
         },
@@ -583,43 +585,16 @@
               this.idTasaActiva = data.id_tasa || 'T001';
               this.tasasActivas = data.tasas || {};
               this.correoZelleActivo = data.correo_zelle || 'GM Sports 21 LLC';
-            }
-          } catch (e) { console.error('Error cargando tasas activas:', e); }
-        },
 
-        async cargarBorradorInicial() {
-          if (this.borradorCargadoInicialmente) return;
-          try {
-            const res = await this.fetchConTimeout('/api/tasas/fetch-hoo');
-            if (res.ok) {
-              const data = await res.json();
-              if (data && data.success && data.rates) {
-                this.borradorTasas = { ...this.borradorTasas, ...data.rates };
-                this.borradorCorreoZelle = data.correo_zelle || this.correoZelleActivo || 'GM Sports 21 LLC';
+              // El borrador siempre carga e inicia con la última tasa publicada de la BD
+              if (!this.borradorCargadoInicialmente) {
+                this.borradorTasas = { ...this.borradorTasas, ...this.tasasActivas };
+                this.borradorCorreoZelle = this.correoZelleActivo;
                 this.actualizarParesAutomaticosBorrador();
                 this.borradorCargadoInicialmente = true;
               }
             }
-          } catch (e) { 
-            console.error('Error al consultar borrador inicial:', e);
-          }
-        },
-
-        async guardarBorrador() {
-          try {
-            const res = await this.fetchConTimeout('/api/tasas/borrador', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ 
-                rates: this.borradorTasas,
-                correo_zelle: this.borradorCorreoZelle
-              })
-            });
-            const data = await res.json().catch(() => ({}));
-            alert('💾 Borrador guardado correctamente.');
-          } catch (e) { 
-            alert('💾 Borrador guardado localmente.'); 
-          }
+          } catch (e) { console.error('Error cargando tasas activas:', e); }
         },
 
         async publicarTasa() {
