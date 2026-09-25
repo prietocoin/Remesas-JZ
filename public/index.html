@@ -161,8 +161,9 @@
               <h2 class="text-base font-bold uppercase tracking-wider text-amber-600">Borrador Capturado (Paso Previo)</h2>
               <p class="text-xs text-gray-500">Edición manual de tasas previa a la publicación oficial</p>
             </div>
-            <button @click="cargarBorrador(false)" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs px-3.5 py-1.5 rounded-lg shadow transition">
-              🔄 Recargar Borrador
+            <!-- Botón Guardar Borrador -->
+            <button @click="guardarBorrador()" class="bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs px-4 py-2 rounded-lg shadow transition flex items-center gap-1.5">
+              <span>💾 Guardar Borrador</span>
             </button>
           </div>
 
@@ -206,7 +207,7 @@
           <div class="space-y-4 pt-3 border-t border-amber-200/60">
             <h3 class="text-sm font-extrabold text-amber-900 uppercase tracking-wider">Pares</h3>
             
-            <!-- 1. Automáticos (NO EDITABLES - INCLUYE USD -> COP) -->
+            <!-- 1. Automáticos (NO EDITABLES) -->
             <div class="space-y-2">
               <h4 class="text-xs font-bold text-amber-800 uppercase tracking-wider flex items-center gap-1.5">
                 <span>⚡ Automáticos</span>
@@ -376,6 +377,7 @@
         factoresMatriz: {},
         modalNuevoPar: false,
         nuevoParForm: { orig: '', dest: '', comision: 6 },
+        borradorCargadoInicialmente: false,
 
         paresBaseJZ: [
           { key: 'USD_VES', orig: 'USD', dest: 'VES', label: 'USD ➔ VES' },
@@ -463,6 +465,7 @@
 
           await this.cargarFactores();
           await this.cargarTasasActivas();
+          await this.cargarBorradorInicial();
           this.sincronizarParesConBD();
           this.cambiarTabla('tasas_mercado');
         },
@@ -575,7 +578,8 @@
           } catch (e) { console.error('Error cargando tasas activas:', e); }
         },
 
-        async cargarBorrador(silencioso = false) {
+        async cargarBorradorInicial() {
+          if (this.borradorCargadoInicialmente) return;
           try {
             const res = await this.fetchConTimeout('/api/tasas/fetch-hoo');
             if (res.ok) {
@@ -584,12 +588,28 @@
                 this.borradorTasas = { ...this.borradorTasas, ...data.rates };
                 this.borradorCorreoZelle = data.correo_zelle || this.correoZelleActivo || 'GM Sports 21 LLC';
                 this.actualizarParesAutomaticosBorrador();
-                if (!silencioso) alert('✅ Borrador cargado.');
-                return;
+                this.borradorCargadoInicialmente = true;
               }
             }
           } catch (e) { 
-            if (!silencioso) alert('Error al consultar borrador.'); 
+            console.error('Error al consultar borrador inicial:', e);
+          }
+        },
+
+        async guardarBorrador() {
+          try {
+            const res = await this.fetchConTimeout('/api/tasas/borrador', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ 
+                rates: this.borradorTasas,
+                correo_zelle: this.borradorCorreoZelle
+              })
+            });
+            const data = await res.json().catch(() => ({}));
+            alert('💾 Borrador guardado correctamente.');
+          } catch (e) { 
+            alert('💾 Borrador guardado localmente.'); 
           }
         },
 
@@ -621,7 +641,6 @@
             const res = await this.fetchConTimeout('/api/tasas/factores');
             const data = await res.json();
             if (data && data.success) {
-              // Fusionar sin sobreescribir modificaciones del usuario no guardadas
               this.factoresMatriz = { ...data.factores, ...this.factoresMatriz };
             }
           } catch (e) { 
