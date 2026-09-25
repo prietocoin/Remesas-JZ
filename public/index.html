@@ -464,6 +464,14 @@
           }
         },
 
+        obtenerValoresCalculadosMatriz() {
+          const dict = {};
+          (this.paresJZ || []).forEach(p => {
+            dict[p.key] = this.calcularValorPar(p.key);
+          });
+          return dict;
+        },
+
         async fetchConTimeout(resource, options = {}) {
           const { timeout = 5000 } = options;
           const controller = new AbortController();
@@ -597,6 +605,22 @@
           } catch (e) { console.error('Error cargando tasas activas:', e); }
         },
 
+        async guardarCalculadosBD(idTasa, correoZelle, valoresFinales) {
+          try {
+            await this.fetchConTimeout('/api/tasas/calculadas', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                id_tasa: idTasa,
+                correo_zelle: correoZelle,
+                valores_finales: valoresFinales
+              })
+            });
+          } catch (e) {
+            console.error('Error guardando valores calculados en BD:', e);
+          }
+        },
+
         async publicarTasa() {
           if (!confirm('¿Deseas publicar este lote como oficial?')) return;
           try {
@@ -612,6 +636,10 @@
             if (data && data.success) {
               alert(data.message || '🚀 Lote publicado con éxito a producción.');
               await this.cargarTasasActivas();
+              
+              // Guardar los valores finales calculados en la nueva tabla jz_tasas_calculadas
+              const valoresFinales = this.obtenerValoresCalculadosMatriz();
+              await this.guardarCalculadosBD(this.idTasaActiva, this.correoZelleActivo, valoresFinales);
             } else {
               alert('❌ Error al publicar: ' + (data.error || data.message || 'Error desconocido.'));
             }
@@ -733,6 +761,11 @@
                 })
               });
             }
+
+            // Actualizar también la tabla jz_tasas_calculadas con los nuevos valores recalculados
+            const valoresFinales = this.obtenerValoresCalculadosMatriz();
+            await this.guardarCalculadosBD(this.idTasaActiva, this.correoZelleActivo, valoresFinales);
+
             alert('✅ Porcentajes actualizados correctamente.');
           } catch (e) {
             alert('Error al guardar porcentajes.');
