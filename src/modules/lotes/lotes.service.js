@@ -31,6 +31,10 @@ class LotesService {
   async publicarLote(tasas, correoZelle) {
     return await lotesRepo.publicarLoteOficial(tasas, correoZelle || 'GM Sports 21 LLC');
   }
+
+  async guardarCalculadas(idTasa, correoZelle, valoresFinales) {
+    return await lotesRepo.guardarCalculadas(idTasa, correoZelle || 'GM Sports 21 LLC', valoresFinales);
+  }
 }
 
 module.exports = new LotesService();
