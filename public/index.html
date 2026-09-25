@@ -135,7 +135,7 @@
             </div>
           </div>
 
-          <!-- Grilla Completa de Pares Oficiales -->
+          <!-- Grilla Completa de Pares Oficiales (SIN LAS 4 CARDS ESPECIALES) -->
           <div class="space-y-3 pt-4 border-t border-gray-100">
             <div class="flex justify-between items-center">
               <h3 class="text-xs font-extrabold text-indigo-900 uppercase tracking-wider">Vista Previa de Pares Oficiales</h3>
@@ -143,7 +143,7 @@
             </div>
 
             <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
-              <template x-for="p in paresJZ" :key="p.key">
+              <template x-for="p in paresMercado" :key="p.key">
                 <div class="bg-gray-50 border border-gray-200 p-3.5 rounded-lg shadow-sm flex flex-col justify-between">
                   <span class="text-xs text-indigo-600 font-bold block mb-1 truncate" x-text="p.label"></span>
                   <span class="text-xl font-bold text-gray-800" x-text="calcularValorPar(p.key)"></span>
@@ -415,6 +415,11 @@
         ],
         paresJZ: [],
 
+        get paresMercado() {
+          const excluir = ['ZX_PEN_VES', 'JZ_PEN_VES', 'JZ_USD_VES', 'JZ_COP_VES'];
+          return (this.paresJZ || []).filter(p => !excluir.includes(p.key));
+        },
+
         get paresAutomaticos() {
           const autoKeys = ['USD_VES', 'PEN_VES', 'USD_PEN', 'USD_COP'];
           return (this.paresJZ || []).filter(p => autoKeys.includes(p.key));
@@ -634,12 +639,13 @@
             });
             const data = await res.json();
             if (data && data.success) {
-              alert(data.message || '🚀 Lote publicado con éxito a producción.');
               await this.cargarTasasActivas();
               
-              // Guardar los valores finales calculados en la nueva tabla jz_tasas_calculadas
+              // Guardar los valores finales calculados en la BD jz_tasas_calculadas al publicar
               const valoresFinales = this.obtenerValoresCalculadosMatriz();
               await this.guardarCalculadosBD(this.idTasaActiva, this.correoZelleActivo, valoresFinales);
+
+              alert(data.message || '🚀 Lote publicado con éxito a producción.');
             } else {
               alert('❌ Error al publicar: ' + (data.error || data.message || 'Error desconocido.'));
             }
