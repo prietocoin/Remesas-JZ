@@ -477,8 +477,9 @@
           return dict;
         },
 
+        // Timeout incrementado a 15000ms (15 segundos) para prevenir AbortError
         async fetchConTimeout(resource, options = {}) {
-          const { timeout = 5000 } = options;
+          const { timeout = 15000 } = options;
           const controller = new AbortController();
           const id = setTimeout(() => controller.abort(), timeout);
           try {
@@ -503,7 +504,7 @@
           await this.cargarFactores();
           await this.cargarTasasActivas();
           this.sincronizarParesConBD();
-          this.cambiarTabla('tasas_mercado');
+          this.tablaActiva = 'tasas_mercado';
         },
 
         async cambiarTabla(nombre) {
