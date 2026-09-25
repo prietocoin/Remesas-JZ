@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Tasas de Remesas | Instancia JOHN</title>
+  <title>Visor de Remesas | Instancia JOHN</title>
   
   <link rel="icon" type="image/png" href="/logo.png">
 
@@ -76,10 +76,10 @@
         Borrador Capturado
       </button>
 
-      <!-- Menú 3: Comisión por Par (%) -->
+      <!-- Menú 3: Porcentajes -->
       <button @click="cambiarTabla('comisiones_par')" :class="tablaActiva === 'comisiones_par' ? 'bg-indigo-600 text-white shadow' : 'text-blue-200 hover:bg-white/10 hover:text-white'" class="w-full flex items-center gap-3 p-2.5 rounded-lg font-semibold text-sm transition-all">
         <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 6v12m-3-6h6M4 6h16M4 12h16M4 18h16" /></svg>
-        Comisión por Par (%)
+        Porcentajes
       </button>
     </nav>
   </aside>
@@ -94,7 +94,7 @@
             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
           </button>
           <div>
-            <h1 class="text-base sm:text-xl font-bold tracking-wide leading-tight" x-text="tablaActiva === 'tasas_mercado' ? 'Gestión De Tasas Mercado' : (tablaActiva === 'borrador_tasas' ? 'Borrador Capturado de Tasas' : 'Gestión de Comisiones por Par')"></h1>
+            <h1 class="text-base sm:text-xl font-bold tracking-wide leading-tight" x-text="tablaActiva === 'tasas_mercado' ? 'Gestión De Tasas Mercado' : (tablaActiva === 'borrador_tasas' ? 'Borrador Capturado de Tasas' : 'Gestión de Porcentajes')"></h1>
           </div>
         </div>
         <span class="text-xs bg-zorrilla-dark px-2.5 py-1 rounded-full text-blue-200 border border-zorrilla font-medium shrink-0">Motor Activo</span>
@@ -103,7 +103,7 @@
 
     <main class="flex-1 overflow-x-hidden overflow-y-auto bg-gray-100 p-3 sm:p-4 pb-12 w-full">
 
-      <!-- MENÚ 1: PANTALLA PRINCIPAL - LOTE ACTIVO PRODUCCIÓN CON GRILLA COMPLETA -->
+      <!-- MENÚ 1: PANTALLA PRINCIPAL - LOTE ACTIVO PRODUCCIÓN -->
       <div x-show="tablaActiva === 'tasas_mercado'" class="max-w-6xl mx-auto space-y-6">
         
         <div class="bg-white border border-gray-200 rounded-lg p-6 space-y-5 shadow">
@@ -118,8 +118,8 @@
           <!-- Monedas Base Activas -->
           <div class="space-y-2">
             <h3 class="text-xs font-bold text-indigo-900 uppercase tracking-wider">Monedas Base de Producción</h3>
-            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              <template x-for="moneda in ['USD', 'PEN', 'VES']" :key="moneda">
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
+              <template x-for="moneda in ['USD', 'PEN', 'VES', 'COP']" :key="moneda">
                 <div class="bg-gray-50 border border-gray-200 p-3.5 rounded-lg shadow-sm">
                   <span class="text-xs text-indigo-600 font-bold block mb-1" x-text="formatearNombreMoneda(moneda)"></span>
                   <span class="text-xl font-bold text-gray-800" x-text="Number(tasasActivas[moneda] || 0).toLocaleString('es-ES', { minimumFractionDigits: 2 })"></span>
@@ -175,7 +175,7 @@
           <!-- Monedas Base -->
           <div class="space-y-2">
             <h3 class="text-xs font-bold text-amber-800 uppercase tracking-wider">Monedas Base</h3>
-            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
               <!-- USD -->
               <div class="bg-amber-50/50 border border-amber-200 p-3.5 rounded-lg">
                 <label class="text-xs text-amber-800 font-bold block mb-1 uppercase tracking-wider">USD</label>
@@ -193,6 +193,12 @@
                 <label class="text-xs text-amber-800 font-bold block mb-1 uppercase tracking-wider">VES</label>
                 <input type="number" step="any" x-model.number="borradorTasas.VES" @input="actualizarParesAutomaticosBorrador()" class="w-full bg-white text-gray-900 font-bold text-base p-2 rounded border border-amber-300 outline-none focus:ring-1 focus:ring-amber-500">
               </div>
+
+              <!-- COP -->
+              <div class="bg-amber-50/50 border border-amber-200 p-3.5 rounded-lg">
+                <label class="text-xs text-amber-800 font-bold block mb-1 uppercase tracking-wider">COP</label>
+                <input type="number" step="any" x-model.number="borradorTasas.COP" @input="actualizarParesAutomaticosBorrador()" class="w-full bg-white text-gray-900 font-bold text-base p-2 rounded border border-amber-300 outline-none focus:ring-1 focus:ring-amber-500">
+              </div>
             </div>
           </div>
 
@@ -200,7 +206,7 @@
           <div class="space-y-4 pt-3 border-t border-amber-200/60">
             <h3 class="text-sm font-extrabold text-amber-900 uppercase tracking-wider">Pares</h3>
             
-            <!-- 1. Automáticos (NO EDITABLES) -->
+            <!-- 1. Automáticos (NO EDITABLES - INCLUYE USD -> COP) -->
             <div class="space-y-2">
               <h4 class="text-xs font-bold text-amber-800 uppercase tracking-wider flex items-center gap-1.5">
                 <span>⚡ Automáticos</span>
@@ -278,13 +284,13 @@
 
       </div>
 
-      <!-- MENÚ 3: COMISIÓN POR PAR (%) -->
+      <!-- MENÚ 3: PORCENTAJES (PORCENTAJES DE COMISIÓN POR PAR %) -->
       <div x-show="tablaActiva === 'comisiones_par'" x-cloak class="max-w-6xl mx-auto space-y-6">
         
         <div class="bg-white border border-gray-200 rounded-lg p-5 space-y-4 shadow">
           <div class="flex justify-between items-center border-b border-gray-100 pb-3">
             <div>
-              <h3 class="text-xs font-bold text-indigo-900 uppercase tracking-wider">Comisión por Par (%)</h3>
+              <h3 class="text-xs font-bold text-indigo-900 uppercase tracking-wider">Porcentajes de Comisión por Par (%)</h3>
               <p class="text-[10px] text-gray-400">Pares oficiales configurados para JOHN (Valor calculado en verde)</p>
             </div>
             <button @click="abrirModalNuevoPar()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs px-3 py-1.5 rounded-lg shadow transition flex items-center gap-1">
@@ -361,10 +367,10 @@
         tasasActivas: {}, idTasaActiva: 'T000',
         correoZelleActivo: 'GM Sports 21 LLC',
         borradorTasas: {
-          USD: 1, PEN: 3.36, VES: 956.5,
-          USD_VES: 956.5, PEN_VES: 284.67, VES_PEN: 0.0035, USD_PEN: 3.36,
+          USD: 1, PEN: 3.36, VES: 956.5, COP: 3095.67,
+          USD_VES: 956.5, PEN_VES: 284.67, VES_PEN: 0.0035, USD_PEN: 3.36, USD_COP: 3095.67,
           PYP_VES: 732, ESP_VES: 0.8, BIZ_VES: 0.78, ARS_VES: 0.53, VES_COP: 3.05,
-          PEN_COP: 842, PEN_CLP: 247, USD_COP: 2717, COP_PEN: 1041, COP_VES: 3.61, MXN_VES: 46.97
+          PEN_COP: 842, PEN_CLP: 247, COP_PEN: 1041, COP_VES: 3.61, MXN_VES: 46.97
         },
         borradorCorreoZelle: 'GM Sports 21 LLC',
         factoresMatriz: {},
@@ -375,6 +381,7 @@
           { key: 'USD_VES', orig: 'USD', dest: 'VES', label: 'USD ➔ VES' },
           { key: 'PEN_VES', orig: 'PEN', dest: 'VES', label: 'PEN ➔ VES' },
           { key: 'USD_PEN', orig: 'USD', dest: 'PEN', label: 'USD ➔ PEN' },
+          { key: 'USD_COP', orig: 'USD', dest: 'COP', label: 'USD ➔ COP' },
           { key: 'PYP_VES', orig: 'PYP', dest: 'VES', label: 'PayPal ➔ VES' },
           { key: 'ESP_VES', orig: 'ESP', dest: 'VES', label: 'Europa (EUR) ➔ VES' },
           { key: 'BIZ_VES', orig: 'BIZ', dest: 'VES', label: 'Bizum ➔ VES' },
@@ -384,14 +391,13 @@
           { key: 'MXN_VES', orig: 'MXN', dest: 'VES', label: 'MXN ➔ VES' },
           { key: 'ARS_VES', orig: 'ARS', dest: 'VES', label: 'ARS ➔ VES' },
           { key: 'PEN_CLP', orig: 'PEN', dest: 'CLP', label: 'PEN ➔ CLP' },
-          { key: 'USD_COP', orig: 'USD', dest: 'COP', label: 'USD ➔ COP' },
           { key: 'COP_PEN', orig: 'COP', dest: 'PEN', label: 'COP ➔ PEN' },
           { key: 'COP_VES', orig: 'COP', dest: 'VES', label: 'COP ➔ VES' }
         ],
         paresJZ: [],
 
         get paresAutomaticos() {
-          const autoKeys = ['USD_VES', 'PEN_VES', 'USD_PEN'];
+          const autoKeys = ['USD_VES', 'PEN_VES', 'USD_PEN', 'USD_COP'];
           return (this.paresJZ || []).filter(p => autoKeys.includes(p.key));
         },
 
@@ -406,7 +412,7 @@
         },
 
         get paresManuales() {
-          const autoKeys = ['USD_VES', 'PEN_VES', 'USD_PEN'];
+          const autoKeys = ['USD_VES', 'PEN_VES', 'USD_PEN', 'USD_COP'];
           const fijaKeys = ['COP_PEN'];
           const inversaKeys = ['COP_VES'];
           return (this.paresJZ || []).filter(p => !autoKeys.includes(p.key) && !fijaKeys.includes(p.key) && !inversaKeys.includes(p.key));
@@ -416,6 +422,7 @@
           const usd = parseFloat(this.borradorTasas.USD || 0);
           const pen = parseFloat(this.borradorTasas.PEN || 0);
           const ves = parseFloat(this.borradorTasas.VES || 0);
+          const cop = parseFloat(this.borradorTasas.COP || 0);
 
           if (usd > 0 && ves > 0) {
             this.borradorTasas.USD_VES = this.truncarDinamico(ves / usd);
@@ -425,6 +432,9 @@
           }
           if (usd > 0 && pen > 0) {
             this.borradorTasas.USD_PEN = this.truncarDinamico(pen / usd);
+          }
+          if (usd > 0 && cop > 0) {
+            this.borradorTasas.USD_COP = this.truncarDinamico(cop / usd);
           }
         },
 
@@ -467,7 +477,6 @@
           if (Object.keys(this.factoresMatriz || {}).length === 0) {
             await this.cargarFactores();
           }
-          await this.cargarBorrador(true);
         },
 
         formatearNombreMoneda(m) {
@@ -503,7 +512,7 @@
           const key = String(parKey).toUpperCase();
 
           // Fórmula para pares automáticos: monB / monA
-          const autoKeys = ['USD_VES', 'PEN_VES', 'USD_PEN'];
+          const autoKeys = ['USD_VES', 'PEN_VES', 'USD_PEN', 'USD_COP'];
           if (autoKeys.includes(key)) {
             const parts = key.split('_');
             const orig = parts[0];
@@ -546,7 +555,6 @@
             case 'ARS_VES': val = ARS ? (1 / ARS) * VES * f('ARS', 'VES') : 0; break;
             case 'VES_COP': val = VES ? (1 / VES) * COP * f('VES', 'COP') : 0; break;
             case 'PEN_CLP': val = PEN ? (1 / PEN) * CLP * f('PEN', 'CLP') : 0; break;
-            case 'USD_COP': val = USD ? (1 / USD) * COP * f('USD', 'COP') : 0; break;
 
             default: val = 0;
           }
@@ -613,7 +621,8 @@
             const res = await this.fetchConTimeout('/api/tasas/factores');
             const data = await res.json();
             if (data && data.success) {
-              this.factoresMatriz = data.factores || {};
+              // Fusionar sin sobreescribir modificaciones del usuario no guardadas
+              this.factoresMatriz = { ...data.factores, ...this.factoresMatriz };
             }
           } catch (e) { 
             console.error('Error cargando factores:', e); 
