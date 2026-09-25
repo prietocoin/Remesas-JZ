@@ -12,6 +12,7 @@ router.post('/tasas/binance', (req, res) => lotesController.syncBinance(req, res
 router.post('/tasas/n8n-webhook', (req, res) => lotesController.webhookN8N(req, res));
 router.get('/tasas/fetch-hoo', (req, res) => lotesController.getBorrador(req, res));
 router.post('/tasas/publicar', (req, res) => lotesController.publicar(req, res));
+router.post('/tasas/calculadas', (req, res) => lotesController.guardarCalculadas(req, res));
 
 // Módulo Matriz & Factores
 router.get('/tasas/factores', (req, res) => matrizController.getFactores(req, res));
