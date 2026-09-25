@@ -128,22 +128,18 @@
             </div>
           </div>
 
-          <!-- Grilla Completa de Pares con Tasa Calculada Previa -->
+          <!-- Grilla Completa de Pares con Estilo Limpio (Mismo diseño que Monedas Base) -->
           <div class="space-y-3 pt-4 border-t border-gray-100">
             <div class="flex justify-between items-center">
-              <h3 class="text-xs font-extrabold text-indigo-900 uppercase tracking-wider">Vista Previa de Pares Oficiales (Valor en Verde)</h3>
+              <h3 class="text-xs font-extrabold text-indigo-900 uppercase tracking-wider">Vista Previa de Pares Oficiales</h3>
               <span class="text-[10px] text-gray-400 font-medium">Calculado: Monto Par publicado ± porcentaje configurado</span>
             </div>
 
             <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
               <template x-for="p in paresJZ" :key="p.key">
-                <div class="bg-indigo-50/40 border border-indigo-100 p-3 rounded-lg flex flex-col justify-between shadow-sm">
-                  <span class="text-[11px] text-indigo-800 font-bold truncate mb-2" x-text="p.label"></span>
-                  <div class="flex justify-between items-end">
-                    <span class="text-xs text-gray-400 font-semibold" x-text="(esSumarComision(p.orig, p.dest) ? '+' : '-') + obtenerComisionPar(p.orig, p.dest) + '%'"></span>
-                    <span class="text-sm font-mono font-extrabold text-emerald-800 bg-emerald-100 border border-emerald-300 px-2 py-0.5 rounded shadow-sm" 
-                          x-text="calcularValorPar(p.key)"></span>
-                  </div>
+                <div class="bg-gray-50 border border-gray-200 p-3.5 rounded-lg shadow-sm flex flex-col justify-between">
+                  <span class="text-xs text-indigo-600 font-bold block mb-1 truncate" x-text="p.label"></span>
+                  <span class="text-xl font-bold text-gray-800" x-text="calcularValorPar(p.key)"></span>
                 </div>
               </template>
             </div>
@@ -435,7 +431,6 @@
           const autoKeys = ['USD_VES', 'PEN_VES', 'USD_PEN', 'USD_COP'];
           const fijaKeys = ['COP_PEN'];
           const inversaKeys = ['COP_VES'];
-          // Excluimos las 4 divisas especiales únicamente del Borrador Capturado
           const excluirDeBorrador = ['ZX_PEN_VES', 'JZ_PEN_VES', 'JZ_USD_VES', 'JZ_COP_VES'];
 
           return (this.paresJZ || []).filter(p => 
