@@ -477,7 +477,6 @@
           return dict;
         },
 
-        // Timeout incrementado a 15000ms (15 segundos) para prevenir AbortError
         async fetchConTimeout(resource, options = {}) {
           const { timeout = 15000 } = options;
           const controller = new AbortController();
@@ -549,7 +548,6 @@
           return 0.94; // 6% resta por defecto
         },
 
-        // Muestra la tasa oficial publicada directamente sin recalcular comisión encima
         obtenerTasaPublicadaPar(parKey) {
           const t = this.tasasActivas || {};
           const key = String(parKey).toUpperCase();
@@ -577,7 +575,6 @@
           return resultadoTruncado ? resultadoTruncado.toLocaleString('es-ES') : '0';
         },
 
-        // Usado únicamente para la vista previa dinámica en el panel Porcentajes
         calcularValorPar(parKey) {
           const t = this.tasasActivas || {};
           const key = String(parKey).toUpperCase();
@@ -652,20 +649,27 @@
         async publicarTasa() {
           if (!confirm('¿Deseas publicar este lote como oficial?')) return;
           try {
+            const correoZelleADisparar = this.borradorCorreoZelle || 'GM Sports 21 LLC';
+
             const res = await this.fetchConTimeout('/api/tasas/publicar', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ 
                 tasas: this.borradorTasas,
-                correo_zelle: this.borradorCorreoZelle
+                correo_zelle: correoZelleADisparar
               })
             });
             const data = await res.json();
+
             if (data && data.success) {
-              await this.cargarTasasActivas();
-              
+              const nuevoIdTasa = data.id_tasa || this.idTasaActiva;
               const valoresFinales = this.obtenerValoresCalculadosMatriz();
-              await this.guardarCalculadosBD(this.idTasaActiva, this.correoZelleActivo, valoresFinales);
+
+              // Se guarda en jz_tasas_calculadas usando el correo DINÁMICO del borrador
+              await this.guardarCalculadosBD(nuevoIdTasa, correoZelleADisparar, valoresFinales);
+
+              // Recargar las tasas activas para actualizar el visor
+              await this.cargarTasasActivas();
 
               alert(data.message || '🚀 Lote publicado con éxito a producción.');
             } else {
@@ -790,8 +794,11 @@
               });
             }
 
+            const correoZelleGuardar = this.borradorCorreoZelle || this.correoZelleActivo || 'GM Sports 21 LLC';
             const valoresFinales = this.obtenerValoresCalculadosMatriz();
-            await this.guardarCalculadosBD(this.idTasaActiva, this.correoZelleActivo, valoresFinales);
+
+            // Guarda usando la variable dinámica de correo
+            await this.guardarCalculadosBD(this.idTasaActiva, correoZelleGuardar, valoresFinales);
 
             alert('✅ Porcentajes actualizados correctamente.');
           } catch (e) {
