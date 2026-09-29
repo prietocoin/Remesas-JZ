@@ -54,9 +54,19 @@ async function initTasasJZ() {
         actualizado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
 
+      -- === NUEVA TABLA V2 (JSONB) ===
+      CREATE TABLE IF NOT EXISTS jz_lotes_v2 (
+        id_tasa VARCHAR(20) PRIMARY KEY,
+        correo_zelle VARCHAR(255) DEFAULT 'GM Sports 21 LLC',
+        titular_zelle VARCHAR(255) DEFAULT 'GM Sports 21 LLC',
+        contenido JSONB NOT NULL DEFAULT '{}'::jsonb,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+
       CREATE INDEX IF NOT EXISTS idx_jz_mercado_tasas_id ON jz_mercado_tasas(id_tasa);
       CREATE INDEX IF NOT EXISTS idx_jz_notificaciones_id_tasa ON jz_notificaciones(id_tasa);
       CREATE INDEX IF NOT EXISTS idx_jz_tasas_calculadas_id_tasa ON jz_tasas_calculadas(id_tasa);
+      CREATE INDEX IF NOT EXISTS idx_jz_lotes_v2_created ON jz_lotes_v2(created_at DESC);
     `);
 
     const checkFactores = await pool.query('SELECT COUNT(*) FROM jz_factores_matriz');
@@ -70,7 +80,7 @@ async function initTasasJZ() {
         ('USD', 'COP', 0.8800), ('USD', 'PEN', 0.9000), ('COP', 'PEN', 0.8800);
       `);
     }
-    console.log('✅ [Remesas-JZ] Tablas de base de datos inicializadas.');
+    console.log('✅ [Remesas-JZ] Tablas de base de datos inicializadas (V1 + V2 JSONB).');
   } catch (err) {
     console.error('❌ Error inicializando base de datos:', err.message);
   }
