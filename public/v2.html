@@ -13,7 +13,7 @@
 </head>
 <body class="bg-slate-100 min-h-screen p-3 font-sans text-slate-800 pb-16" x-data="v2App()" x-init="init()">
 
-  <div class="max-w-md mx-auto space-y-3.5">
+  <div class="max-w-md mx-auto space-y-3.5" x-cloak>
 
     <!-- ENCABEZADO PANEL V2 -->
     <div class="bg-indigo-900 text-white p-3 rounded-xl shadow-xs flex justify-between items-center">
@@ -278,10 +278,31 @@
             const data = await res.json();
             if (data.success && data.lote) {
               this.loteActivo = data.lote;
-              // Fusionar lote activo conservando la estructura si faltan llaves
-              this.loteEditando = JSON.parse(JSON.stringify(data.lote));
+
+              // Fusión profunda y segura para garantizar la integridad de las llaves
+              if (data.lote.titular_zelle) this.loteEditando.titular_zelle = data.lote.titular_zelle;
+              if (data.lote.correo_zelle) this.loteEditando.correo_zelle = data.lote.correo_zelle;
+
+              if (data.lote.monedas_base) {
+                Object.assign(this.loteEditando.monedas_base, data.lote.monedas_base);
+              }
+
+              if (data.lote.bases_manuales) {
+                Object.assign(this.loteEditando.bases_manuales, data.lote.bases_manuales);
+              }
+
+              if (data.lote.comisiones) {
+                Object.keys(data.lote.comisiones).forEach(k => {
+                  if (!this.loteEditando.comisiones[k]) {
+                    this.loteEditando.comisiones[k] = { pct: 0, esSuma: false };
+                  }
+                  Object.assign(this.loteEditando.comisiones[k], data.lote.comisiones[k]);
+                });
+              }
             }
-          } catch (e) { console.error('Error cargando V2:', e); }
+          } catch (e) {
+            console.error('Error cargando V2:', e);
+          }
         },
 
         calcularTasaBaseAuto(parKey) {
@@ -294,13 +315,16 @@
 
           if (parKey === 'ZX_PEN_VES' || parKey === 'JZ_PEN_VES') return this.calcularTasaBaseAuto('PEN_VES');
           if (parKey === 'JZ_USD_VES') return this.calcularTasaBaseAuto('USD_VES');
-          if (parKey === 'JZ_COP_VES') return parseFloat(this.loteEditando.bases_manuales['COP_VES'] || 3.48);
+          if (parKey === 'JZ_COP_VES') {
+            const baseCopVes = this.loteEditando.bases_manuales ? this.loteEditando.bases_manuales['COP_VES'] : 3.48;
+            return parseFloat(baseCopVes || 3.48);
+          }
 
           return 0;
         },
 
         obtenerBasePar(parKey) {
-          if (this.loteEditando.bases_manuales[parKey] !== undefined) {
+          if (this.loteEditando.bases_manuales && this.loteEditando.bases_manuales[parKey] !== undefined) {
             return parseFloat(this.loteEditando.bases_manuales[parKey] || 0);
           }
           return this.calcularTasaBaseAuto(parKey);
