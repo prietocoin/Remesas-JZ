@@ -10,12 +10,17 @@ app.use(express.static(path.join(__dirname, 'public')));
 // Inicializar tablas en PostgreSQL (V1 + V2 JSONB)
 initTasasJZ();
 
-// Panel V1 Actual
+// === RUTA PRINCIPAL (Ahora es V2) ===
 app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'v2.html'));
+});
+
+// === RUTA DE RESPALDO V1 (Por si necesitas la versión anterior) ===
+app.get('/v1', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
-// === Panel V2 Minimalista (Ruta Aislada) ===
+// Mantener /v2 por compatibilidad
 app.get('/v2', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'v2.html'));
 });
