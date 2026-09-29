@@ -1,10 +1,86 @@
 const { Router } = require('express');
+const { pool } = require('../config/db');
 const lotesController = require('../modules/lotes/lotes.controller');
 const matrizController = require('../modules/matriz/matriz.controller');
 const visorController = require('../modules/visor/visor.controller');
 const directorioController = require('../modules/directorio/directorio.controller');
 
 const router = Router();
+
+// ==========================================
+// MÓDULO V2 (PARALELO JSONB)
+// ==========================================
+
+// Obtener el lote activo publicado en V2
+router.get('/v2/tasas/activo', async (req, res) => {
+  try {
+    const { rows } = await pool.query(
+      `SELECT id_tasa, correo_zelle, titular_zelle, created_at, contenido 
+       FROM jz_lotes_v2 
+       ORDER BY created_at DESC LIMIT 1;`
+    );
+    return res.json({ 
+      success: true, 
+      lote: rows[0]?.contenido || null 
+    });
+  } catch (err) {
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// Publicar lote completo V2 en un solo paso
+router.post('/v2/tasas/publicar', async (req, res) => {
+  try {
+    const { correo_zelle, titular_zelle, monedas_base, comisiones, tasas_finales } = req.body;
+
+    if (!monedas_base || !tasas_finales) {
+      return res.status(400).json({ success: false, error: 'Faltan datos requeridos en el lote.' });
+    }
+
+    // Calcular siguiente ID de lote
+    const lastLot = await pool.query(`SELECT id_tasa FROM jz_lotes_v2 ORDER BY created_at DESC LIMIT 1;`);
+    let num = 1;
+    if (lastLot.rows.length > 0) {
+      const match = lastLot.rows[0].id_tasa.match(/\d+/);
+      if (match) num = parseInt(match[0], 10) + 1;
+    }
+    const nuevoIdTasa = `T${String(num).padStart(3, '0')}`;
+
+    const documentoLote = {
+      id_tasa: nuevoIdTasa,
+      correo_zelle: correo_zelle || 'gmsports21sp2@dulceh.com',
+      titular_zelle: titular_zelle || 'GM Sports 21 LLC',
+      fechahora: new Date().toISOString(),
+      monedas_base,
+      comisiones,
+      tasas_finales
+    };
+
+    await pool.query(
+      `INSERT INTO jz_lotes_v2 (id_tasa, correo_zelle, titular_zelle, contenido) 
+       VALUES ($1, $2, $3, $4::jsonb);`,
+      [
+        nuevoIdTasa, 
+        documentoLote.correo_zelle, 
+        documentoLote.titular_zelle, 
+        JSON.stringify(documentoLote)
+      ]
+    );
+
+    return res.json({ 
+      success: true, 
+      id_tasa: nuevoIdTasa, 
+      message: `🚀 Lote ${nuevoIdTasa} publicado con éxito en V2.`,
+      lote: documentoLote 
+    });
+  } catch (err) {
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// ==========================================
+// MÓDULO V1 (EXISTENTE - INTACTO)
+// ==========================================
 
 // Módulo Lotes & Tasas
 router.get('/tasas/ultimas', (req, res) => lotesController.getUltimasTasas(req, res));
