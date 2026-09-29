@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Panel de Tasas V2 | Minimalista Móvil</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+  <style>
+    [x-cloak] { display: none !important; }
+    input { font-size: 14px !important; }
+  </style>
+</head>
+<body class="bg-slate-100 min-h-screen p-3 font-sans text-slate-800 pb-16" x-data="v2App()" x-init="init()">
+
+  <div class="max-w-md mx-auto space-y-3.5">
+
+    <!-- ENCABEZADO PANEL V2 -->
+    <div class="bg-indigo-900 text-white p-3 rounded-xl shadow-xs flex justify-between items-center">
+      <div>
+        <h1 class="text-xs font-black uppercase tracking-wider">Gestión de Tasas V2</h1>
+        <p class="text-[9px] text-indigo-200">Panel Atómico Móvil (JSONB)</p>
+      </div>
+      <span class="text-[10px] font-bold bg-indigo-800 border border-indigo-700 text-emerald-400 font-mono px-2 py-0.5 rounded-full" 
+            x-text="'Lote: ' + (loteActivo?.id_tasa || 'Sin publicar')"></span>
+    </div>
+
+    <!-- 1. CONFIGURACIÓN ZELLE DE LOTE -->
+    <div class="bg-white border border-slate-200 rounded-xl p-2.5 shadow-2xs space-y-2">
+      <div class="flex justify-between items-center border-b border-slate-100 pb-1">
+        <span class="text-xs font-black text-slate-800 flex items-center gap-1">💳 Zelle del Lote</span>
+        <span class="text-[9px] font-bold bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded">V2 Activo</span>
+      </div>
+
+      <div class="space-y-1.5">
+        <!-- Titular -->
+        <div class="grid grid-cols-2 gap-1.5">
+          <div class="bg-slate-50 p-1 rounded-lg border border-slate-100">
+            <span class="text-[8px] font-bold text-slate-400 block uppercase">Titular Antiguo</span>
+            <span class="font-bold text-slate-700 truncate block text-[10px]" x-text="loteActivo?.titular_zelle || 'GM Sports 21 LLC'"></span>
+          </div>
+          <div>
+            <span class="text-[8px] font-bold text-amber-800 block uppercase">Titular Nuevo</span>
+            <input type="text" x-model="loteEditando.titular_zelle" class="w-full bg-amber-50/40 border border-amber-300 rounded px-1.5 py-0.5 text-xs font-bold text-slate-800 outline-none">
+          </div>
+        </div>
+
+        <!-- Correo -->
+        <div class="grid grid-cols-2 gap-1.5">
+          <div class="bg-slate-50 p-1 rounded-lg border border-slate-100">
+            <span class="text-[8px] font-bold text-slate-400 block uppercase">Correo Antiguo</span>
+            <span class="font-bold text-slate-700 truncate block text-[10px]" x-text="loteActivo?.correo_zelle || 'gmsports21sp2@dulceh.com'"></span>
+          </div>
+          <div>
+            <span class="text-[8px] font-bold text-amber-800 block uppercase">Correo Nuevo</span>
+            <input type="email" x-model="loteEditando.correo_zelle" class="w-full bg-amber-50/40 border border-amber-300 rounded px-1.5 py-0.5 text-xs font-bold text-slate-800 outline-none">
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 2. MONEDAS BASE MERCADO -->
+    <div class="space-y-1.5">
+      <span class="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1 block">Monedas Base</span>
+      
+      <div class="grid grid-cols-2 gap-2">
+        <template x-for="(valor, moneda) in loteEditando.monedas_base" :key="moneda">
+          <div class="bg-white border border-slate-200 rounded-xl p-2 shadow-2xs flex justify-between items-center">
+            <div>
+              <span class="text-xs font-black text-slate-800 block" x-text="moneda"></span>
+              <span class="text-[8px] text-slate-400 font-mono" x-text="'Ant: ' + (loteActivo?.monedas_base?.[moneda] || '0')"></span>
+            </div>
+            <input type="number" step="any" x-model.number="loteEditando.monedas_base[moneda]" 
+                   class="w-16 text-right bg-slate-50 border border-slate-200 rounded px-1 py-0.5 text-xs font-black outline-none focus:bg-white focus:border-indigo-500">
+          </div>
+        </template>
+      </div>
+    </div>
+
+    <!-- 3. PARES AUTOMÁTICOS -->
+    <div class="space-y-1.5">
+      <span class="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1 block">⚡ Pares Automáticos</span>
+
+      <template x-for="p in paresAutomaticosList" :key="p.key">
+        <div class="bg-white border border-slate-200 rounded-xl p-2 shadow-2xs space-y-1.5">
+          <div class="flex items-center justify-between gap-1">
+            <span class="text-xs font-black text-slate-800" x-text="p.label"></span>
+            
+            <div class="flex items-center gap-1">
+              <div class="flex items-center bg-slate-100 border rounded px-1 py-0.5">
+                <span class="text-[8px] text-slate-400 font-bold mr-0.5">%</span>
+                <input type="number" step="0.1" x-model.number="loteEditando.comisiones[p.key].pct" class="w-8 text-center bg-transparent text-xs font-black outline-none">
+              </div>
+              <button @click="loteEditando.comisiones[p.key].esSuma = !loteEditando.comisiones[p.key].esSuma" 
+                      :class="loteEditando.comisiones[p.key].esSuma ? 'bg-emerald-100 text-emerald-800 border-emerald-300' : 'bg-rose-100 text-rose-800 border-rose-300'" 
+                      class="border px-1.5 py-0.5 rounded text-[10px] font-black transition active:scale-95">
+                <span x-text="loteEditando.comisiones[p.key].esSuma ? '+Sum' : '-Rest'"></span>
+              </button>
+            </div>
+
+            <span class="text-[8px] text-slate-400 font-mono bg-slate-50 border px-1 py-0.5 rounded" 
+                  x-text="'Ant: ' + (loteActivo?.tasas_finales?.[p.key] || '0')"></span>
+          </div>
+
+          <div class="grid grid-cols-2 gap-1.5">
+            <div class="bg-slate-50 border rounded px-1.5 py-0.5 flex justify-between items-center">
+              <span class="text-[8px] text-slate-400 font-bold">⚡ Auto:</span>
+              <span class="text-xs font-black text-slate-700 font-mono" x-text="calcularTasaBaseAuto(p.key)"></span>
+            </div>
+            <div class="bg-emerald-50/90 border border-emerald-200 rounded px-1.5 py-0.5 flex justify-between items-center">
+              <span class="text-[8px] font-extrabold text-emerald-800">Final:</span>
+              <span class="text-xs font-black text-emerald-700 font-mono" x-text="calcularTasaFinal(p.key)"></span>
+            </div>
+          </div>
+        </div>
+      </template>
+    </div>
+
+    <!-- 4. PARES MANUALES -->
+    <div class="space-y-1.5">
+      <span class="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1 block">✏️ Pares Manuales</span>
+
+      <template x-for="p in paresManualesList" :key="p.key">
+        <div class="bg-white border border-slate-200 rounded-xl p-2 shadow-2xs space-y-1.5">
+          <div class="flex items-center justify-between gap-1">
+            <span class="text-xs font-black text-slate-800" x-text="p.label"></span>
+            
+            <div class="flex items-center gap-1">
+              <div class="flex items-center bg-slate-100 border rounded px-1 py-0.5">
+                <span class="text-[8px] text-slate-400 font-bold mr-0.5">%</span>
+                <input type="number" step="0.1" x-model.number="loteEditando.comisiones[p.key].pct" class="w-8 text-center bg-transparent text-xs font-black outline-none">
+              </div>
+              <button @click="loteEditando.comisiones[p.key].esSuma = !loteEditando.comisiones[p.key].esSuma" 
+                      :class="loteEditando.comisiones[p.key].esSuma ? 'bg-emerald-100 text-emerald-800 border-emerald-300' : 'bg-rose-100 text-rose-800 border-rose-300'" 
+                      class="border px-1.5 py-0.5 rounded text-[10px] font-black transition active:scale-95">
+                <span x-text="loteEditando.comisiones[p.key].esSuma ? '+Sum' : '-Rest'"></span>
+              </button>
+            </div>
+
+            <span class="text-[8px] text-slate-400 font-mono bg-slate-50 border px-1 py-0.5 rounded" 
+                  x-text="'Ant: ' + (loteActivo?.tasas_finales?.[p.key] || '0')"></span>
+          </div>
+
+          <div class="grid grid-cols-2 gap-1.5">
+            <div class="bg-amber-50/40 border border-amber-200 rounded px-1.5 py-0.5 flex justify-between items-center">
+              <span class="text-[8px] font-bold text-amber-800">Base:</span>
+              <input type="number" step="any" x-model.number="loteEditando.bases_manuales[p.key]" class="w-14 text-right bg-white border border-amber-300 rounded px-0.5 text-xs font-black outline-none">
+            </div>
+            <div class="bg-emerald-50/90 border border-emerald-200 rounded px-1.5 py-0.5 flex justify-between items-center">
+              <span class="text-[8px] font-extrabold text-emerald-800">Final:</span>
+              <span class="text-xs font-black text-emerald-700 font-mono" x-text="calcularTasaFinal(p.key)"></span>
+            </div>
+          </div>
+        </div>
+      </template>
+    </div>
+
+    <!-- 5. INSTANCIAS ESPECIALES (ZX / JZ) -->
+    <div class="space-y-1.5">
+      <span class="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1 block">🔑 Instancias Especiales (ZX / JZ)</span>
+
+      <template x-for="p in paresEspecialesList" :key="p.key">
+        <div class="bg-white border border-indigo-100 rounded-xl p-2 shadow-2xs space-y-1.5">
+          <div class="flex items-center justify-between gap-1">
+            <span class="text-xs font-black text-indigo-900" x-text="p.label"></span>
+            
+            <div class="flex items-center gap-1">
+              <div class="flex items-center bg-slate-100 border rounded px-1 py-0.5">
+                <span class="text-[8px] text-slate-400 font-bold mr-0.5">%</span>
+                <input type="number" step="0.1" x-model.number="loteEditando.comisiones[p.key].pct" class="w-8 text-center bg-transparent text-xs font-black outline-none">
+              </div>
+              <button @click="loteEditando.comisiones[p.key].esSuma = !loteEditando.comisiones[p.key].esSuma" 
+                      :class="loteEditando.comisiones[p.key].esSuma ? 'bg-emerald-100 text-emerald-800 border-emerald-300' : 'bg-rose-100 text-rose-800 border-rose-300'" 
+                      class="border px-1.5 py-0.5 rounded text-[10px] font-black transition active:scale-95">
+                <span x-text="loteEditando.comisiones[p.key].esSuma ? '+Sum' : '-Rest'"></span>
+              </button>
+            </div>
+
+            <span class="text-[8px] text-slate-400 font-mono bg-slate-50 border px-1 py-0.5 rounded" 
+                  x-text="'Ant: ' + (loteActivo?.tasas_finales?.[p.key] || '0')"></span>
+          </div>
+
+          <div class="grid grid-cols-2 gap-1.5">
+            <div class="bg-indigo-50/40 border border-indigo-100 rounded px-1.5 py-0.5 flex justify-between items-center">
+              <span class="text-[8px] font-bold text-indigo-800">⚡ Auto:</span>
+              <span class="text-xs font-black text-slate-700 font-mono" x-text="calcularTasaBaseAuto(p.key)"></span>
+            </div>
+            <div class="bg-emerald-50/90 border border-emerald-200 rounded px-1.5 py-0.5 flex justify-between items-center">
+              <span class="text-[8px] font-extrabold text-emerald-800">Final:</span>
+              <span class="text-xs font-black text-emerald-700 font-mono" x-text="calcularTasaFinal(p.key)"></span>
+            </div>
+          </div>
+        </div>
+      </template>
+    </div>
+
+    <!-- BOTÓN PUBLICAR -->
+    <div class="pt-2">
+      <button @click="publicarLoteCompleto()" 
+              class="w-full bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white font-black py-3.5 rounded-xl shadow-md text-xs tracking-wider uppercase active:scale-[0.98] cursor-pointer">
+        🚀 Publicar Lote Completo (JSONB V2)
+      </button>
+    </div>
+
+  </div>
+
+  <script>
+    function v2App() {
+      return {
+        loteActivo: null,
+        
+        // Estado base predeterminado
+        loteEditando: {
+          titular_zelle: 'GM Sports 21 LLC',
+          correo_zelle: 'gmsports21sp2@dulceh.com',
+          monedas_base: { USD: 1.0, PEN: 3.44, VES: 954.0, COP: 3320.0 },
+          bases_manuales: {
+            PYP_VES: 800, ESP_VES: 1030, BIZ_VES: 960, PEN_COP: 920,
+            VES_PEN: 297, MXN_VES: 49.3, ARS_VES: 0, PEN_CLP: 265,
+            COP_PEN: 1080, COP_VES: 3.48
+          },
+          comisiones: {
+            USD_VES: { pct: 10.5, esSuma: false },
+            PEN_VES: { pct: 6.0, esSuma: false },
+            USD_PEN: { pct: 10.5, esSuma: false },
+            USD_COP: { pct: 10.5, esSuma: false },
+            PYP_VES: { pct: 6.0, esSuma: false },
+            ESP_VES: { pct: 6.0, esSuma: false },
+            BIZ_VES: { pct: 6.0, esSuma: false },
+            PEN_COP: { pct: 6.0, esSuma: false },
+            VES_PEN: { pct: 0.0, esSuma: false },
+            MXN_VES: { pct: 6.0, esSuma: false },
+            ARS_VES: { pct: 6.0, esSuma: false },
+            PEN_CLP: { pct: 6.0, esSuma: false },
+            COP_PEN: { pct: 0.0, esSuma: false },
+            COP_VES: { pct: 6.0, esSuma: true },
+            ZX_PEN_VES: { pct: 7.0, esSuma: false },
+            JZ_PEN_VES: { pct: 3.9, esSuma: false },
+            JZ_USD_VES: { pct: 8.5, esSuma: false },
+            JZ_COP_VES: { pct: 4.0, esSuma: true }
+          }
+        },
+
+        paresAutomaticosList: [
+          { key: 'USD_VES', label: 'USD➔VES', orig: 'USD', dest: 'VES' },
+          { key: 'PEN_VES', label: 'PEN➔VES', orig: 'PEN', dest: 'VES' },
+          { key: 'USD_PEN', label: 'USD➔PEN', orig: 'USD', dest: 'PEN' },
+          { key: 'USD_COP', label: 'USD➔COP', orig: 'USD', dest: 'COP' }
+        ],
+
+        paresManualesList: [
+          { key: 'PYP_VES', label: 'PayPal➔VES' },
+          { key: 'ESP_VES', label: 'Europa(EUR)➔VES' },
+          { key: 'BIZ_VES', label: 'Bizum➔VES' },
+          { key: 'PEN_COP', label: 'PEN➔COP' },
+          { key: 'VES_PEN', label: 'VES➔PEN' },
+          { key: 'MXN_VES', label: 'MXN➔VES' },
+          { key: 'ARS_VES', label: 'ARS➔VES' },
+          { key: 'PEN_CLP', label: 'PEN➔CLP' },
+          { key: 'COP_PEN', label: 'COP➔PEN (Fija)' },
+          { key: 'COP_VES', label: 'COP➔VES (Inversa)' }
+        ],
+
+        paresEspecialesList: [
+          { key: 'ZX_PEN_VES', label: 'ZX_PEN➔VES', refAuto: 'PEN_VES' },
+          { key: 'JZ_PEN_VES', label: 'JZ_PEN➔VES', refAuto: 'PEN_VES' },
+          { key: 'JZ_USD_VES', label: 'JZ_USD➔VES', refAuto: 'USD_VES' },
+          { key: 'JZ_COP_VES', label: 'JZ_COP➔VES', refAuto: 'COP_VES' }
+        ],
+
+        async init() {
+          await this.cargarLoteActivo();
+        },
+
+        async cargarLoteActivo() {
+          try {
+            const res = await fetch('/api/v2/tasas/activo');
+            const data = await res.json();
+            if (data.success && data.lote) {
+              this.loteActivo = data.lote;
+              // Fusionar lote activo conservando la estructura si faltan llaves
+              this.loteEditando = JSON.parse(JSON.stringify(data.lote));
+            }
+          } catch (e) { console.error('Error cargando V2:', e); }
+        },
+
+        calcularTasaBaseAuto(parKey) {
+          const autoPair = this.paresAutomaticosList.find(p => p.key === parKey);
+          if (autoPair) {
+            const orig = parseFloat(this.loteEditando.monedas_base[autoPair.orig] || 1);
+            const dest = parseFloat(this.loteEditando.monedas_base[autoPair.dest] || 1);
+            return orig > 0 ? Number((dest / orig).toFixed(2)) : 0;
+          }
+
+          if (parKey === 'ZX_PEN_VES' || parKey === 'JZ_PEN_VES') return this.calcularTasaBaseAuto('PEN_VES');
+          if (parKey === 'JZ_USD_VES') return this.calcularTasaBaseAuto('USD_VES');
+          if (parKey === 'JZ_COP_VES') return parseFloat(this.loteEditando.bases_manuales['COP_VES'] || 3.48);
+
+          return 0;
+        },
+
+        obtenerBasePar(parKey) {
+          if (this.loteEditando.bases_manuales[parKey] !== undefined) {
+            return parseFloat(this.loteEditando.bases_manuales[parKey] || 0);
+          }
+          return this.calcularTasaBaseAuto(parKey);
+        },
+
+        calcularTasaFinal(parKey) {
+          const tasaBase = this.obtenerBasePar(parKey);
+          const com = this.loteEditando.comisiones[parKey] || { pct: 0, esSuma: false };
+          const factor = com.esSuma ? (1 + (com.pct / 100)) : (1 - (com.pct / 100));
+          return Number((tasaBase * factor).toFixed(2));
+        },
+
+        obtenerTodasLasTasasFinales() {
+          const dict = {};
+          Object.keys(this.loteEditando.comisiones).forEach(parKey => {
+            dict[parKey] = this.calcularTasaFinal(parKey);
+          });
+          return dict;
+        },
+
+        async publicarLoteCompleto() {
+          if (!confirm('¿Deseas publicar este lote en V2?')) return;
+
+          const payload = {
+            titular_zelle: this.loteEditando.titular_zelle,
+            correo_zelle: this.loteEditando.correo_zelle,
+            monedas_base: this.loteEditando.monedas_base,
+            bases_manuales: this.loteEditando.bases_manuales,
+            comisiones: this.loteEditando.comisiones,
+            tasas_finales: this.obtenerTodasLasTasasFinales()
+          };
+
+          try {
+            const res = await fetch('/api/v2/tasas/publicar', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(payload)
+            });
+            const data = await res.json();
+
+            if (data.success) {
+              alert(data.message);
+              await this.cargarLoteActivo();
+            } else {
+              alert('Error: ' + data.error);
+            }
+          } catch (e) {
+            alert('Error al conectar con la API V2.');
+          }
+        }
+      }
+    }
+  </script>
+</body>
+</html>
