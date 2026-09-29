@@ -3,30 +3,75 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Panel de Tasas V2 | Minimalista Móvil</title>
+  <title>Panel de Tasas V2 | J. ZORRILLA</title>
+
+  <!-- FAVICON -->
+  <link rel="icon" type="image/png" href="/logo.png">
+
   <script src="https://cdn.tailwindcss.com"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+
   <style>
     [x-cloak] { display: none !important; }
     input { font-size: 14px !important; }
+
+    html, body {
+      touch-action: manipulation;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    .bg-zorrilla { background-color: #2e3192; }
+    .bg-zorrilla-dark { background-color: #1f2268; }
+    .border-zorrilla { border-color: #4347bd; }
+
+    @keyframes logoPulse {
+      0%, 100% { transform: scale(1); opacity: 0.95; }
+      50% { transform: scale(1.06); opacity: 1; filter: drop-shadow(0 0 15px rgba(255, 255, 255, 0.3)); }
+    }
+    .animate-logo-pulse {
+      animation: logoPulse 2s infinite ease-in-out;
+    }
   </style>
 </head>
-<body class="bg-slate-100 min-h-screen p-3 font-sans text-slate-800 pb-16" x-data="v2App()" x-init="init()">
+<body class="bg-slate-100 min-h-screen font-sans text-slate-800 pb-16" x-data="v2App()" x-init="init()">
 
-  <div class="max-w-md mx-auto space-y-3.5" x-cloak>
-
-    <!-- ENCABEZADO PANEL V2 -->
-    <div class="bg-indigo-900 text-white p-3 rounded-xl shadow-xs flex justify-between items-center">
-      <div>
-        <h1 class="text-xs font-black uppercase tracking-wider">Gestión de Tasas V2</h1>
-        <p class="text-[9px] text-indigo-200">Panel Atómico Móvil (JSONB)</p>
+  <!-- PRELOADER ANIMADO CON LOGO J. ZORRILLA -->
+  <div id="preloader" class="fixed inset-0 bg-zorrilla z-[100] flex flex-col items-center justify-center p-4 transition-all duration-500 opacity-100">
+    <div class="flex flex-col items-center max-w-xs text-center space-y-4">
+      <div class="relative flex items-center justify-center">
+        <div class="absolute inset-0 rounded-full bg-white/10 blur-xl animate-pulse"></div>
+        <img src="/logo.png" alt="Logo J. Zorrilla" class="w-36 h-36 object-contain relative z-10 animate-logo-pulse">
       </div>
-      <span class="text-[10px] font-bold bg-indigo-800 border border-indigo-700 text-emerald-400 font-mono px-2 py-0.5 rounded-full" 
+      <div class="space-y-1">
+        <h2 class="text-white text-lg font-bold tracking-wider uppercase">J. ZORRILLA</h2>
+        <p class="text-blue-200 text-xs font-semibold tracking-wide">Gestión Atómica de Tasas V2 (JOHN)</p>
+      </div>
+      <div class="w-48 bg-zorrilla-dark rounded-full h-1.5 overflow-hidden border border-white/20 mt-2">
+        <div class="bg-gradient-to-r from-orange-500 to-amber-400 h-full w-full animate-pulse"></div>
+      </div>
+      <span class="text-[10px] text-blue-200 tracking-widest font-mono">CARGANDO PANEL MÓVIL...</span>
+    </div>
+  </div>
+
+  <div class="max-w-md mx-auto p-3 space-y-3.5" x-cloak>
+
+    <!-- ENCABEZADO CON LOGO Y ESTILO ZORRILLA -->
+    <div class="bg-zorrilla text-white p-3 rounded-xl shadow-md flex justify-between items-center border border-zorrilla">
+      <div class="flex items-center gap-2.5">
+        <div class="bg-white/10 p-1 rounded-lg">
+          <img src="/logo.png" alt="Logo J. Zorrilla" class="w-8 h-8 object-contain">
+        </div>
+        <div>
+          <h1 class="text-xs font-black uppercase tracking-wider leading-tight">J. ZORRILLA</h1>
+          <p class="text-[9px] text-blue-200 font-semibold">Gestión de Tasas V2 (JSONB)</p>
+        </div>
+      </div>
+      <span class="text-[10px] font-bold bg-zorrilla-dark border border-indigo-400/30 text-emerald-400 font-mono px-2 py-0.5 rounded-full shadow-inner" 
             x-text="'Lote: ' + (loteActivo?.id_tasa || 'Sin publicar')"></span>
     </div>
 
     <!-- 1. CONFIGURACIÓN ZELLE DE LOTE -->
-    <div class="bg-white border border-slate-200 rounded-xl p-2.5 shadow-2xs space-y-2">
+    <div class="bg-white border border-slate-200 rounded-xl p-2.5 shadow-xs space-y-2">
       <div class="flex justify-between items-center border-b border-slate-100 pb-1">
         <span class="text-xs font-black text-slate-800 flex items-center gap-1">💳 Zelle del Lote</span>
         <span class="text-[9px] font-bold bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded">V2 Activo</span>
@@ -65,7 +110,7 @@
       
       <div class="grid grid-cols-2 gap-2">
         <template x-for="(valor, moneda) in loteEditando.monedas_base" :key="moneda">
-          <div class="bg-white border border-slate-200 rounded-xl p-2 shadow-2xs flex justify-between items-center">
+          <div class="bg-white border border-slate-200 rounded-xl p-2 shadow-xs flex justify-between items-center">
             <div>
               <span class="text-xs font-black text-slate-800 block" x-text="moneda"></span>
               <span class="text-[8px] text-slate-400 font-mono" x-text="'Ant: ' + (loteActivo?.monedas_base?.[moneda] || '0')"></span>
@@ -82,7 +127,7 @@
       <span class="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1 block">⚡ Pares Automáticos</span>
 
       <template x-for="p in paresAutomaticosList" :key="p.key">
-        <div class="bg-white border border-slate-200 rounded-xl p-2 shadow-2xs space-y-1.5">
+        <div class="bg-white border border-slate-200 rounded-xl p-2 shadow-xs space-y-1.5">
           <div class="flex items-center justify-between gap-1">
             <span class="text-xs font-black text-slate-800" x-text="p.label"></span>
             
@@ -121,7 +166,7 @@
       <span class="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1 block">✏️ Pares Manuales</span>
 
       <template x-for="p in paresManualesList" :key="p.key">
-        <div class="bg-white border border-slate-200 rounded-xl p-2 shadow-2xs space-y-1.5">
+        <div class="bg-white border border-slate-200 rounded-xl p-2 shadow-xs space-y-1.5">
           <div class="flex items-center justify-between gap-1">
             <span class="text-xs font-black text-slate-800" x-text="p.label"></span>
             
@@ -160,7 +205,7 @@
       <span class="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1 block">🔑 Instancias Especiales (ZX / JZ)</span>
 
       <template x-for="p in paresEspecialesList" :key="p.key">
-        <div class="bg-white border border-indigo-100 rounded-xl p-2 shadow-2xs space-y-1.5">
+        <div class="bg-white border border-indigo-100 rounded-xl p-2 shadow-xs space-y-1.5">
           <div class="flex items-center justify-between gap-1">
             <span class="text-xs font-black text-indigo-900" x-text="p.label"></span>
             
@@ -197,7 +242,7 @@
     <!-- BOTÓN PUBLICAR -->
     <div class="pt-2">
       <button @click="publicarLoteCompleto()" 
-              class="w-full bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white font-black py-3.5 rounded-xl shadow-md text-xs tracking-wider uppercase active:scale-[0.98] cursor-pointer">
+              class="w-full bg-zorrilla hover:bg-zorrilla-dark active:bg-indigo-950 text-white font-black py-3.5 rounded-xl shadow-md text-xs tracking-wider uppercase active:scale-[0.98] cursor-pointer transition-all">
         🚀 Publicar Lote Completo (JSONB V2)
       </button>
     </div>
@@ -209,7 +254,6 @@
       return {
         loteActivo: null,
         
-        // Estado base con todos los pares oficiales
         loteEditando: {
           titular_zelle: 'GM Sports 21 LLC',
           correo_zelle: 'gmsports21sp2@dulceh.com',
@@ -271,6 +315,15 @@
         ],
 
         async init() {
+          // Ocultar pantalla de carga animada suavemente al inicializar
+          setTimeout(() => {
+            const preloader = document.getElementById('preloader');
+            if (preloader) {
+              preloader.classList.add('opacity-0', 'pointer-events-none');
+              setTimeout(() => preloader.remove(), 500);
+            }
+          }, 800);
+
           await this.cargarLoteActivo();
         },
 
@@ -306,9 +359,7 @@
           }
         },
 
-        // REGLA DE TRUNCADO DINÁMICA DE V1 (SIN REDONDEO)
-        // >= 100 -> Entero truncado
-        // < 100  -> 2 decimales truncados
+        // REGLA DE TRUNCADO V1 (>= 100 entero, < 100 dos decimales)
         truncarV1(valor) {
           const num = parseFloat(valor || 0);
           if (isNaN(num)) return 0;
@@ -350,8 +401,6 @@
           const factor = com.esSuma ? (1 + (com.pct / 100)) : (1 - (com.pct / 100));
           
           const resultadoBruto = tasaBase * factor;
-
-          // Aplica truncado dinámico V1 (< 100 = 2 decimales | >= 100 = entero)
           return this.truncarV1(resultadoBruto);
         },
 
