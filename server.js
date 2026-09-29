@@ -5,17 +5,19 @@ const apiRouter = require('./src/routes/api.router');
 
 const app = express();
 app.use(express.json({ limit: '10mb' }));
-app.use(express.static(path.join(__dirname, 'public')));
+
+// 1. DESHABILITAR index.html AUTOMÁTICO EN ARCHIVOS ESTÁTICOS
+app.use(express.static(path.join(__dirname, 'public'), { index: false }));
 
 // Inicializar tablas en PostgreSQL (V1 + V2 JSONB)
 initTasasJZ();
 
-// === RUTA PRINCIPAL (Ahora es V2) ===
+// === RUTA PRINCIPAL (V2 Predeterminado) ===
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'v2.html'));
 });
 
-// === RUTA DE RESPALDO V1 (Por si necesitas la versión anterior) ===
+// === RUTA DE RESPALDO V1 ===
 app.get('/v1', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
@@ -25,7 +27,7 @@ app.get('/v2', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'v2.html'));
 });
 
-// Rutas de API (incluye CRUD de directorio, tasas y V2)
+// Rutas de API
 app.use('/api', apiRouter);
 
 const PORT = process.env.PORT || 80;
